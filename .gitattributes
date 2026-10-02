@@ -1,0 +1,61 @@
+# FileStudio 换行符与文件类型策略
+#
+# 目标：跨平台协作时避免整仓出现 CRLF/LF 混用导致的无谓 diff。
+# 约定：仓库内一律以 LF 存储；仅 Windows 批处理脚本例外（CRLF）。
+#
+# 说明：本仓库在 Windows + core.autocrlf=true 下开发，提交前若不做规范化，
+#       每个文件都会触发 "LF will be replaced by CRLF" 警告。
+
+# ---- 默认：文本文件，仓库内与检出均为 LF ----
+*               text=auto eol=lf
+
+# ---- Windows 批处理：必须 CRLF ----
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+gradlew.bat     text eol=crlf
+
+# ---- POSIX shell 脚本：必须 LF，否则报 "bad interpreter: /bin/sh^M" ----
+gradlew         text eol=lf
+*.sh            text eol=lf
+
+# ---- 二进制：禁止换行符转换与差异对比 ----
+# Gradle / 构建产物
+*.jar           binary
+*.zip           binary
+*.gz            binary
+*.tar           binary
+*.class         binary
+# 图片
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.bmp           binary
+*.ico           binary
+*.webp          binary
+# 字体
+*.ttf           binary
+*.otf           binary
+*.woff          binary
+*.woff2         binary
+# 音视频（本项目按容器解析，需保证字节精确）
+*.mp4           binary
+*.mov           binary
+*.mkv           binary
+*.webm          binary
+*.avi           binary
+*.mp3           binary
+*.wav           binary
+*.flac          binary
+# 文档与密钥
+*.pdf           binary
+*.p12           binary
+*.pfx           binary
+*.der           binary
+*.crt           binary
+*.cer           binary
+*.keystore      binary
+
+# ---- 合并冲突时优先保留 ----
+*.md            text eol=lf merge=union
+*.txt           text eol=lf
