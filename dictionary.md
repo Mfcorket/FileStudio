@@ -68,7 +68,7 @@
 | zip | application/zip | PARTIAL | ZIP |
 | 7z | application/x-7z-compressed | PARTIAL | 7z |
 | tar | application/x-tar | PARTIAL | tar \[内置\] TarArchiveHandler |
-| gz | application/gzip | PARTIAL | gzip |
+| gz, gzip, tgz | application/gzip | PARTIAL | gzip \[内置\] GzipArchiveHandler |
 | rar | application/vnd.rar | PARTIAL | RAR |
 | bz2 | application/x-bzip2 | PARTIAL | bzip2 |
 
@@ -118,9 +118,8 @@
 ## 10. 数据库类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
-| sqlite, db | application/vnd.sqlite3 | VIEW_ONLY | SQLite |
+| sqlite, sqlite3, db, db3 | application/vnd.sqlite3 | VIEW_ONLY | SQLite \[内置\] SqliteFileHandler（页大小/编码/表数量） |
 | parquet | application/vnd.parquet | VIEW_ONLY | Parquet |
-| db3 | application/vnd.sqlite3 | VIEW_ONLY | SQLite3 |
 
 ## 11. 字体类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
@@ -161,7 +160,12 @@
 | aab | application/vnd.android.package-bundle | PARTIAL | Android App Bundle |
 | ipa | application/octet-stream | PARTIAL | iOS 包 |
 
-## 16. 自定义/示例
+## 16. 字节码 / 可执行文件（VIEW_ONLY）
+| 扩展名 | MIME | 编辑 | 说明 |
+|--------|------|------|------|
+| class | application/java-vm | VIEW_ONLY | Java 字节码 \[内置\] JavaClassFileHandler（编译版本/类名/修饰符） |
+
+## 17. 自定义/示例
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
 | sample | text/x-sample | FULL | FileStudio 示例插件格式（内置） |
@@ -171,4 +175,5 @@
 ### 字段说明
 - **编辑深度**：FULL=可读取+修改+回写原格式；PARTIAL=可解析/提取但不能无损回写；VIEW_ONLY=仅展示
 - **(内置)**：已有专用 Handler（`com.filestudio.plugin.handlers`）；其余文本类由 `TextFileHandler` 兜底
+- `MagicBytesDetector` 已能识别但尚无专用 Handler 的格式：7z、rar、parquet、exe、elf、ole
 - 其它格式的专用 Handler 将在 Phase 1/2 通过插件实现

@@ -55,6 +55,12 @@ gradlew         text eol=lf
 *.crt           binary
 *.cer           binary
 *.keystore      binary
+# 数据库
+*.sqlite        binary
+*.sqlite3       binary
+*.db            binary
+*.db3           binary
+*.parquet       binary
 
 # ---- 合并冲突时优先保留 ----
 *.md            text eol=lf merge=union
