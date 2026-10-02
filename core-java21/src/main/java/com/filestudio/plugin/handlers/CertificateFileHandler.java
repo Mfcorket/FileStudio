@@ -30,6 +30,11 @@ public class CertificateFileHandler implements FileHandler {
 
     private static final Set<String> SUPPORTED = Set.of("pem", "crt", "cer", "der", "p12", "pfx", "key");
 
+    /**
+     * 创建证书处理器实例。
+     */
+    public CertificateFileHandler() {}
+
     @Override
     public String getExtension() {
         return "pem";

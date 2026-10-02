@@ -20,11 +20,24 @@ import java.util.Objects;
 public final class DiffEngine {
 
     /** 差异行类型。 */
-    public enum Type { EQUAL, INSERT, DELETE }
+    public enum Type {
+        /** 两文本相同的行。 */
+        EQUAL,
+        /** 仅存在于新文本的行。 */
+        INSERT,
+        /** 仅存在于旧文本的行。 */
+        DELETE
+    }
 
     private DiffEngine() {}
 
-    /** 比较两个文本，返回 diff 结果。 */
+    /**
+     * 比较两个文本，返回 diff 结果。
+     *
+     * @param oldText 旧文本，{@code null} 视为空串
+     * @param newText 新文本，{@code null} 视为空串
+     * @return diff 结果，含差异行与统计
+     */
     public static DiffResult diff(String oldText, String newText) {
         if (oldText == null) oldText = "";
         if (newText == null) newText = "";
@@ -112,32 +125,56 @@ public final class DiffEngine {
             this.unchangedCount = unchanged;
         }
 
-        /** 差异行列表（正序）。 */
+        /**
+         * 差异行列表（正序）。
+         *
+         * @return 不可变差异行列表
+         */
         public List<DiffLine> lines() {
             return lines;
         }
 
-        /** 新增行数。 */
+        /**
+         * 新增行数。
+         *
+         * @return INSERT 行数
+         */
         public int addedCount() {
             return addedCount;
         }
 
-        /** 删除行数。 */
+        /**
+         * 删除行数。
+         *
+         * @return DELETE 行数
+         */
         public int removedCount() {
             return removedCount;
         }
 
-        /** 未变行数。 */
+        /**
+         * 未变行数。
+         *
+         * @return EQUAL 行数
+         */
         public int unchangedCount() {
             return unchangedCount;
         }
 
-        /** 两文本是否完全相同。 */
+        /**
+         * 两文本是否完全相同。
+         *
+         * @return 无新增且无删除行时为 true
+         */
         public boolean isEmpty() {
             return addedCount == 0 && removedCount == 0;
         }
 
-        /** 生成统一的 diff 格式（类似 unified diff 的简化版）。 */
+        /**
+         * 生成统一的 diff 格式（类似 unified diff 的简化版）。
+         *
+         * @return 每行以两个空格（未变）、{@code "+ "}（新增）或 {@code "- "}（删除）开头
+         */
         public String toUnifiedFormat() {
             StringBuilder sb = new StringBuilder();
             for (DiffLine line : lines) {
@@ -166,6 +203,7 @@ public final class DiffEngine {
      */
     public record DiffLine(Type type, String content, int oldLineNumber, int newLineNumber) {
 
+        /** 紧凑构造器：校验类型、内容非空且行号不小于 -1。 */
         public DiffLine {
             Objects.requireNonNull(type, "type");
             Objects.requireNonNull(content, "content");

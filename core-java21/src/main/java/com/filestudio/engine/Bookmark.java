@@ -14,6 +14,7 @@ import java.util.Objects;
  */
 public record Bookmark(int line, String label, long createdAtMillis) {
 
+    /** 紧凑构造器：校验行号、标签与时间戳的合法性。 */
     public Bookmark {
         if (line < 0) {
             throw new IllegalArgumentException("line must be >= 0, got " + line);

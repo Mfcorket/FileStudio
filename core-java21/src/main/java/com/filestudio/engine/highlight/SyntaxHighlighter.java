@@ -21,15 +21,31 @@ public final class SyntaxHighlighter {
 
     private final SyntaxProfile profile;
 
+    /**
+     * 构造高亮器。
+     *
+     * @param profile 语言配置
+     * @throws NullPointerException 配置为 {@code null} 时抛出
+     */
     public SyntaxHighlighter(SyntaxProfile profile) {
         this.profile = Objects.requireNonNull(profile, "profile");
     }
 
+    /**
+     * 语言配置。
+     *
+     * @return 配置实例
+     */
     public SyntaxProfile getProfile() {
         return profile;
     }
 
-    /** 对 {@code text} 进行分词，返回不含空白 token 的有序列表。 */
+    /**
+     * 对文本进行分词。
+     *
+     * @param text 源文本，{@code null} 或空串时返回空列表
+     * @return 有序 token 列表，不含空白 token
+     */
     public List<Token> tokenize(String text) {
         if (text == null || text.isEmpty()) return List.of();
         List<Token> tokens = new ArrayList<>();
@@ -149,7 +165,12 @@ public final class SyntaxHighlighter {
         return tokens;
     }
 
-    /** 仅做空白感知的分词，适合行内高亮场景。 */
+    /**
+     * 仅做空白感知的分词，适合行内高亮场景。
+     *
+     * @param text 单行文本，{@code null} 或空串时返回空列表
+     * @return 有序 token 列表
+     */
     public List<Token> tokenizeLine(String text) {
         return tokenize(text);
     }

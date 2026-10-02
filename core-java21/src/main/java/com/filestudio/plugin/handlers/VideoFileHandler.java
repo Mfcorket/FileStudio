@@ -30,6 +30,11 @@ import java.util.Set;
  */
 public class VideoFileHandler implements FileHandler {
 
+    /**
+     * 视频格式处理器。
+     */
+    public VideoFileHandler() {}
+
     private static final Set<String> SUPPORTED =
             Set.of("mp4", "mov", "mkv", "webm", "avi");
 

@@ -13,6 +13,10 @@ package com.filestudio.plugin;
 @FunctionalInterface
 public interface FileHandlerFactory {
 
-    /** 创建一个新的处理器实例。每次调用应返回相互独立的实例。 */
+    /**
+     * 创建一个新的处理器实例。
+     *
+     * @return 处理器实例；每次调用应返回相互独立的实例
+     */
     FileHandler createHandler();
 }

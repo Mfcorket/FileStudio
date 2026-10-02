@@ -19,7 +19,14 @@ public final class SearchReplace {
 
     private SearchReplace() {}
 
-    /** 找出所有命中。不会无限循环；正则空匹配会被跳过以避免死循环。 */
+    /**
+     * 找出所有命中。不会无限循环；正则空匹配会被跳过以避免死循环。
+     *
+     * @param text    被搜索文本，{@code null} 视为空串
+     * @param query   搜索词或正则，空串时返回空列表
+     * @param options 搜索选项，{@code null} 时使用默认选项
+     * @return 命中列表，按出现顺序排列；正则非法时返回空列表
+     */
     public static List<SearchMatch> findMatches(String text, String query, SearchOptions options) {
         if (text == null) text = "";
         if (query == null || query.isEmpty()) return List.of();
@@ -38,7 +45,15 @@ public final class SearchReplace {
         return List.copyOf(matches);
     }
 
-    /** 从 {@code from} 偏移起查找下一个命中。 */
+    /**
+     * 从指定偏移起查找下一个命中。
+     *
+     * @param text    被搜索文本，{@code null} 时返回 {@code null}
+     * @param query   搜索词或正则，空串时返回 {@code null}
+     * @param options 搜索选项，{@code null} 时使用默认选项
+     * @param from    起始偏移，超出范围时自动收敛到文本边界
+     * @return 命中的下一个匹配，无命中或正则非法时为 {@code null}
+     */
     public static SearchMatch findNext(String text, String query, SearchOptions options, int from) {
         if (text == null) return null;
         if (query == null || query.isEmpty()) return null;
@@ -57,7 +72,15 @@ public final class SearchReplace {
         return null;
     }
 
-    /** 上一个命中（从 {@code from} 往回找）。 */
+    /**
+     * 上一个命中（从指定偏移往回找）。
+     *
+     * @param text    被搜索文本，{@code null} 时返回 {@code null}
+     * @param query   搜索词或正则，空串时返回 {@code null}
+     * @param options 搜索选项，{@code null} 时使用默认选项
+     * @param from    回溯基准偏移，命中结束位置须不大于该值
+     * @return 最近的匹配，无命中时为 {@code null}
+     */
     public static SearchMatch findPrevious(String text, String query, SearchOptions options, int from) {
         if (text == null) return null;
         List<SearchMatch> all = findMatches(text, query, options);
@@ -70,7 +93,15 @@ public final class SearchReplace {
         return null;
     }
 
-    /** 替换全部命中，返回替换后的文本。 */
+    /**
+     * 替换全部命中，返回替换后的文本。
+     *
+     * @param text        被替换文本，{@code null} 时原样返回
+     * @param query       搜索词或正则
+     * @param replacement 替换模板，支持 {@code $0}；{@code null} 视为空串
+     * @param options     搜索选项，{@code null} 时使用默认选项
+     * @return 替换后的新文本；无命中时返回原文本引用
+     */
     public static String replaceAll(String text, String query, String replacement, SearchOptions options) {
         if (text == null || query == null || query.isEmpty()) return text;
         if (replacement == null) replacement = "";
@@ -87,7 +118,16 @@ public final class SearchReplace {
         return sb.toString();
     }
 
-    /** 替换第 {@code index} 个命中，返回新文本。 */
+    /**
+     * 替换第 {@code index} 个命中，返回新文本。
+     *
+     * @param text        被替换文本，{@code null} 时原样返回
+     * @param query       搜索词或正则
+     * @param replacement 替换模板，支持 {@code $0}；{@code null} 视为空串
+     * @param index       命中序号（0-based）
+     * @param options     搜索选项，{@code null} 时使用默认选项
+     * @return 替换后的新文本；序号越界时返回原文本引用
+     */
     public static String replaceAt(String text, String query, String replacement, int index,
                                    SearchOptions options) {
         if (text == null) return text;
@@ -99,7 +139,17 @@ public final class SearchReplace {
                 + text.substring(m.end());
     }
 
-    /** 指定区间内替换，区间外的文本原样保留。 */
+    /**
+     * 指定区间内替换，区间外的文本原样保留。
+     *
+     * @param text        被替换文本，{@code null} 时原样返回
+     * @param rangeStart  区间起始偏移，超界时收敛到文本边界
+     * @param rangeEnd    区间结束偏移，超界时收敛到文本边界
+     * @param query       搜索词或正则
+     * @param replacement 替换模板；{@code null} 视为空串
+     * @param options     搜索选项，{@code null} 时使用默认选项
+     * @return 替换后的新文本；区间无效（start ≥ end）时返回原文本引用
+     */
     public static String replaceInRange(String text, int rangeStart, int rangeEnd,
                                         String query, String replacement, SearchOptions options) {
         if (text == null) return text;
@@ -111,7 +161,13 @@ public final class SearchReplace {
         return text.substring(0, s) + replaced + text.substring(e);
     }
 
-    /** 查询是否为合法（正则模式下校验语法）。 */
+    /**
+     * 查询是否为合法（正则模式下校验语法）。
+     *
+     * @param query   待校验的搜索词或正则
+     * @param options 搜索选项，{@code null} 时使用默认选项
+     * @return 非正则模式恒为 true；正则模式下语法合法时为 true
+     */
     public static boolean isValidQuery(String query, SearchOptions options) {
         if (query == null || query.isEmpty()) return false;
         SearchOptions o = options == null ? SearchOptions.defaultOptions() : options;
@@ -177,14 +233,26 @@ public final class SearchReplace {
         return v;
     }
 
-    /** 单次命中。不可变。 */
+    /**
+     * 单次命中。不可变。
+     *
+     * @param start 命中起始偏移（含）
+     * @param end   命中结束偏移（不含）
+     * @param text  命中的文本内容
+     */
     public record SearchMatch(int start, int end, String text) {
+        /** 紧凑构造器：校验区间非负且起点不晚于终点。 */
         public SearchMatch {
             if (start < 0 || end < start) {
                 throw new IllegalArgumentException("Invalid match range: " + start + ".." + end);
             }
         }
 
+        /**
+         * 命中长度。
+         *
+         * @return 结束偏移减起始偏移
+         */
         public int length() {
             return end - start;
         }

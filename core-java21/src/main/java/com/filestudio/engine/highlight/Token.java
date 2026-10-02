@@ -16,6 +16,7 @@ import java.util.Objects;
  */
 public record Token(TokenKind kind, String text, int offset, int line, int column) {
 
+    /** 紧凑构造器：校验类别、文本非空且坐标非负。 */
     public Token {
         Objects.requireNonNull(kind, "kind");
         Objects.requireNonNull(text, "text");
@@ -24,19 +25,38 @@ public record Token(TokenKind kind, String text, int offset, int line, int colum
         }
     }
 
-    /** 结束偏移（不含）。 */
+    /**
+     * 结束偏移（不含）。
+     *
+     * @return {@code offset + text.length()}
+     */
     public int end() {
         return offset + text.length();
     }
 
+    /**
+     * 是否为注释 token。
+     *
+     * @return 类别为 {@link TokenKind#COMMENT} 时为 true
+     */
     public boolean isComment() {
         return kind == TokenKind.COMMENT;
     }
 
+    /**
+     * 是否为字符串或字符字面量。
+     *
+     * @return 类别为 {@link TokenKind#STRING} 或 {@link TokenKind#CHAR} 时为 true
+     */
     public boolean isStringLiteral() {
         return kind == TokenKind.STRING || kind == TokenKind.CHAR;
     }
 
+    /**
+     * 是否为空白 token。
+     *
+     * @return 类别为 {@link TokenKind#TEXT} 且内容全为空白时为 true
+     */
     public boolean isWhitespace() {
         return kind == TokenKind.TEXT && text.isBlank();
     }

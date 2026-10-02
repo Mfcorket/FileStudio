@@ -28,6 +28,11 @@ import java.util.regex.Pattern;
  */
 public class PdfFileHandler implements FileHandler {
 
+    /**
+     * PDF 文档处理器。
+     */
+    public PdfFileHandler() {}
+
     private static final int MAX_SCAN_BYTES = 1024 * 1024; // 扫描前 1MB
 
     private static final Pattern PAGE_PATTERN = Pattern.compile("/Type\\s*/Page(?!s)");

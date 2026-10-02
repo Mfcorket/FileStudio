@@ -34,10 +34,16 @@ public final class BookmarkManager {
     private final SortedSet<Bookmark> bookmarks = new TreeSet<>(
             Comparator.comparingInt(Bookmark::line).thenComparingLong(Bookmark::createdAtMillis));
 
+    /** 创建空的书签管理器。 */
     public BookmarkManager() {
     }
 
-    /** 文档文件对应的书签旁挂文件。 */
+    /**
+     * 文档文件对应的书签旁挂文件。
+     *
+     * @param document 文档文件
+     * @return 旁挂文件路径，命名为 {@code <name><ext>.bookmarks}
+     */
     public static File sidecarFile(File document) {
         java.util.Objects.requireNonNull(document, "document");
         String name = document.getName();
@@ -47,7 +53,14 @@ public final class BookmarkManager {
         return new File(document.getParentFile(), base + ext + ".bookmarks");
     }
 
-    /** 添加书签。若该行已有书签则替换其标签。返回新书签。 */
+    /**
+     * 添加书签。若该行已有书签则替换其标签。
+     *
+     * @param line  锚定行号，0-based
+     * @param label 书签标签，必须非空
+     * @return 新建的书签
+     * @throws IllegalArgumentException 行号为负时抛出
+     */
     public Bookmark add(int line, String label) {
         if (line < 0) throw new IllegalArgumentException("line must be >= 0");
         bookmarks.stream().filter(b -> b.line() == line).findFirst().ifPresent(bookmarks::remove);
@@ -56,7 +69,12 @@ public final class BookmarkManager {
         return b;
     }
 
-    /** 按行号移除书签。返回是否移除成功。 */
+    /**
+     * 按行号移除书签。
+     *
+     * @param line 锚定行号，0-based
+     * @return 是否移除成功
+     */
     public boolean remove(int line) {
         Bookmark[] arr = bookmarks.stream().filter(b -> b.line() == line).toArray(Bookmark[]::new);
         if (arr.length == 0) return false;
@@ -64,22 +82,41 @@ public final class BookmarkManager {
         return true;
     }
 
-    /** 该行的书签（若有）。 */
+    /**
+     * 查询该行的书签。
+     *
+     * @param line 锚定行号，0-based
+     * @return 该行书签，不存在时为 {@link Optional#empty()}
+     */
     public Optional<Bookmark> find(int line) {
         return bookmarks.stream().filter(b -> b.line() == line).findFirst();
     }
 
-    /** 该行是否有书签。 */
+    /**
+     * 该行是否有书签。
+     *
+     * @param line 锚定行号，0-based
+     * @return 存在书签时为 true
+     */
     public boolean has(int line) {
         return find(line).isPresent();
     }
 
-    /** 所有书签，按行号升序。 */
+    /**
+     * 所有书签，按行号升序。
+     *
+     * @return 不可变列表快照
+     */
     public List<Bookmark> list() {
         return List.copyOf(bookmarks);
     }
 
-    /** 过滤出行号在 {@code maxLine} 范围内的书签（含）。用于文档缩短后清理越界书签。 */
+    /**
+     * 过滤出行号在范围内的书签（含）。用于文档缩短后清理越界书签。
+     *
+     * @param maxLine 允许的最大行号（含）
+     * @return 行号未越界的书签
+     */
     public List<Bookmark> filterValid(int maxLine) {
         List<Bookmark> valid = new ArrayList<>();
         for (Bookmark b : bookmarks) {
@@ -93,12 +130,21 @@ public final class BookmarkManager {
         bookmarks.clear();
     }
 
-    /** 当前书签数量。 */
+    /**
+     * 当前书签数量。
+     *
+     * @return 书签数
+     */
     public int size() {
         return bookmarks.size();
     }
 
-    /** 持久化到文档的旁挂文件。 */
+    /**
+     * 持久化到文档的旁挂文件。
+     *
+     * @param document 文档文件
+     * @throws com.filestudio.core.FileStudioException 写入失败时抛出
+     */
     public void save(File document) {
         java.util.Objects.requireNonNull(document, "document");
         File sidecar = sidecarFile(document);
@@ -116,7 +162,12 @@ public final class BookmarkManager {
         }
     }
 
-    /** 从文档的旁挂文件加载书签。文件不存在时保持空集合。 */
+    /**
+     * 从文档的旁挂文件加载书签。文件不存在时保持空集合。
+     *
+     * @param document 文档文件
+     * @throws com.filestudio.core.FileStudioException 读取失败时抛出
+     */
     public void load(File document) {
         java.util.Objects.requireNonNull(document, "document");
         File sidecar = sidecarFile(document);
@@ -141,7 +192,11 @@ public final class BookmarkManager {
         }
     }
 
-    /** 返回所有书签行号集合（升序）。便于 UI 一次性渲染标记。 */
+    /**
+     * 返回所有书签行号集合（升序）。便于 UI 一次性渲染标记。
+     *
+     * @return 不可变行号集合
+     */
     public Collection<Integer> bookmarkedLines() {
         List<Integer> lines = new ArrayList<>(bookmarks.size());
         for (Bookmark b : bookmarks) lines.add(b.line());

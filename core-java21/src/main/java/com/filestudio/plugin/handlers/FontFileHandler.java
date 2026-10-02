@@ -32,6 +32,11 @@ import java.util.Set;
  */
 public class FontFileHandler implements FileHandler {
 
+    /**
+     * 字体格式处理器。
+     */
+    public FontFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("ttf", "otf", "woff");
 
     @Override

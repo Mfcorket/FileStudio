@@ -30,7 +30,12 @@ public final class LineIndex {
         this.lineStarts = lineStarts;
     }
 
-    /** 构建行索引。content 为 null 时按空串处理。 */
+    /**
+     * 构建行索引。
+     *
+     * @param content 文档内容，{@code null} 时按空串处理
+     * @return 行索引实例，构建耗时 O(n)
+     */
     public static LineIndex of(String content) {
         String c = content == null ? "" : content;
         int n = c.length();
@@ -44,22 +49,40 @@ public final class LineIndex {
         return new LineIndex(c, Arrays.copyOf(starts, count));
     }
 
-    /** 总行数。空文档返回 1。 */
+    /**
+     * 总行数。空文档返回 1。
+     *
+     * @return 行数
+     */
     public int lineCount() {
         return lineStarts.length;
     }
 
-    /** 文档总字符数。 */
+    /**
+     * 文档总字符数。
+     *
+     * @return 字符数
+     */
     public int charCount() {
         return content.length();
     }
 
-    /** 指定行的起始偏移。行号越界时夹到 [0, lineCount-1]。 */
+    /**
+     * 指定行的起始偏移。
+     *
+     * @param line 行号，0-based；越界时夹到 {@code [0, lineCount-1]}
+     * @return 该行首个字符的偏移
+     */
     public int lineStart(int line) {
         return lineStarts[clampLine(line)];
     }
 
-    /** 指定行的结束偏移（不含换行符，不含下一行的起始字符）。 */
+    /**
+     * 指定行的结束偏移（不含换行符）。
+     *
+     * @param line 行号，0-based；越界时夹到有效范围
+     * @return 该行末字符的偏移（不含），已排除 CRLF/LF/CR
+     */
     private int lineEnd(int line) {
         int l = clampLine(line);
         int start = lineStarts[l];
@@ -74,18 +97,33 @@ public final class LineIndex {
         return end;
     }
 
-    /** 指定行的字符长度（不含换行符）。 */
+    /**
+     * 指定行的字符长度（不含换行符）。
+     *
+     * @param line 行号，0-based；越界时夹到有效范围
+     * @return 该行字符数
+     */
     public int lineLength(int line) {
         return lineEnd(clampLine(line)) - lineStart(clampLine(line));
     }
 
-    /** 指定行的内容（不含换行符）。 */
+    /**
+     * 指定行的内容（不含换行符）。
+     *
+     * @param line 行号，0-based；越界时夹到有效范围
+     * @return 该行文本，不含行尾换行符
+     */
     public String lineContent(int line) {
         int l = clampLine(line);
         return content.substring(lineStart(l), lineEnd(l));
     }
 
-    /** 偏移对应的行号（0-based）。越界夹到 [0, lineCount-1]。 */
+    /**
+     * 偏移对应的行号。
+     *
+     * @param offset 字符偏移，0-based；越界时夹到 {@code [0, lineCount-1]}
+     * @return 行号，二分查找 O(log n)
+     */
     public int lineOf(int offset) {
         if (offset <= 0) return 0;
         if (offset >= content.length()) return clampLine(lineStarts.length - 1);
@@ -101,13 +139,24 @@ public final class LineIndex {
         return lo;
     }
 
-    /** 偏移对应的列号（0-based）。越界夹到该行长度。 */
+    /**
+     * 偏移对应的列号。
+     *
+     * @param offset 字符偏移，0-based；越界时夹到文本范围
+     * @return 列号，0-based
+     */
     public int columnOf(int offset) {
         int o = clampOffset(offset);
         return o - lineStart(lineOf(o));
     }
 
-    /** 由（行, 列）计算偏移。列越界夹到该行长度。 */
+    /**
+     * 由（行, 列）计算偏移。
+     *
+     * @param line   行号，0-based；越界时夹到有效范围
+     * @param column 列号，0-based；越界时夹到该行长度
+     * @return 字符偏移
+     */
     public int offsetOf(int line, int column) {
         int l = clampLine(line);
         int start = lineStarts[l];
@@ -115,7 +164,11 @@ public final class LineIndex {
         return start + col;
     }
 
-    /** 最长行的字符长度（不含换行符）。 */
+    /**
+     * 最长行的字符长度（不含换行符）。
+     *
+     * @return 最长行字符数；空文档为 0
+     */
     public int longestLine() {
         int max = 0;
         for (int i = 0; i < lineStarts.length; i++) {
@@ -124,7 +177,11 @@ public final class LineIndex {
         return max;
     }
 
-    /** 是否包含换行符。 */
+    /**
+     * 是否包含换行符。
+     *
+     * @return 多行文档为 true，单行为 false
+     */
     public boolean hasLineBreak() {
         return lineStarts.length > 1;
     }

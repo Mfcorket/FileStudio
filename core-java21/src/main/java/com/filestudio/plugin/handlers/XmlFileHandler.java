@@ -17,6 +17,11 @@ import java.util.Map;
  */
 public class XmlFileHandler extends AbstractTextHandler {
 
+    /**
+     * XML / plist 处理器。
+     */
+    public XmlFileHandler() {}
+
     @Override
     public String getExtension() {
         return "xml";

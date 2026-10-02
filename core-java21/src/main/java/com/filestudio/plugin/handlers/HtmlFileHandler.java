@@ -21,6 +21,11 @@ import java.util.regex.Pattern;
  */
 public class HtmlFileHandler extends AbstractTextHandler {
 
+    /**
+     * HTML 文档处理器。
+     */
+    public HtmlFileHandler() {}
+
     /** HTML5 void 元素：无结束标签。 */
     private static final Set<String> VOID_ELEMENTS = new HashSet<>(Set.of(
             "area", "base", "br", "col", "embed", "hr", "img", "input",

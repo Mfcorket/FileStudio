@@ -13,6 +13,11 @@ import java.util.Map;
  */
 public class CsvFileHandler extends AbstractTextHandler {
 
+    /**
+     * CSV / TSV 分隔符表格处理器。
+     */
+    public CsvFileHandler() {}
+
     private static final int MAX_HEADER_FIELDS = 64;
 
     @Override

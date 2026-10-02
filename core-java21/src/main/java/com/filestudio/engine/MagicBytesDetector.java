@@ -19,10 +19,22 @@ import java.nio.file.Path;
  */
 public final class MagicBytesDetector {
 
-    /** 识别结果。不可变。 */
+    /**
+     * 识别结果。不可变。
+     *
+     * @param extension  识别出的扩展名（小写，不含点），未知时为空串
+     * @param mimeType   对应 MIME 类型，未知时为 {@code application/octet-stream}
+     * @param confidence 置信度，取值 0.0（未知）至 1.0（签名完全匹配）
+     */
     public record Detection(String extension, String mimeType, double confidence) {
+        /** 识别未成功时的哨兵值。 */
         public static final Detection UNKNOWN = new Detection("", "application/octet-stream", 0.0);
 
+        /**
+         * 是否成功识别出格式。
+         *
+         * @return 置信度大于 0 且扩展名非空时为 true
+         */
         public boolean isKnown() {
             return confidence > 0 && !extension.isEmpty();
         }
@@ -30,7 +42,13 @@ public final class MagicBytesDetector {
 
     private MagicBytesDetector() {}
 
-    /** 读取文件头部最多 {@link #HEADER_BYTES} 字节并识别。 */
+    /**
+     * 读取文件头部并识别格式。
+     *
+     * @param path 目标文件，{@code null} 时返回 {@link Detection#UNKNOWN}
+     * @return 识别结果
+     * @throws FileStudioException 读取失败时抛出
+     */
     public static Detection detect(Path path) {
         if (path == null) return Detection.UNKNOWN;
         try (InputStream in = new BufferedInputStream(Files.newInputStream(path))) {
@@ -42,7 +60,13 @@ public final class MagicBytesDetector {
         }
     }
 
-    /** 从字节前缀识别格式。 */
+    /**
+     * 从字节前缀识别格式。
+     *
+     * @param head 文件头字节，{@code null} 时返回未知
+     * @param len  有效字节数，非正时返回未知
+     * @return 识别结果；无匹配签名时为 {@link Detection#UNKNOWN}
+     */
     public static Detection detect(byte[] head, int len) {
         if (head == null || len <= 0) return Detection.UNKNOWN;
 

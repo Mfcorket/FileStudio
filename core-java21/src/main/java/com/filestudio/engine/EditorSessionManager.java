@@ -22,11 +22,23 @@ public final class EditorSessionManager {
     private final Map<String, EditorSession> sessions = new LinkedHashMap<>();
     private String activeKey;
 
+    /**
+     * 构造会话管理器。
+     *
+     * @param parser 文档解析器，用于打开文件
+     */
     public EditorSessionManager(DocumentParser parser) {
         this.parser = parser;
     }
 
-    /** 打开文件并创建会话；已打开则返回既有会话。 */
+    /**
+     * 打开文件并创建会话；已打开则返回既有会话并置为活动。
+     *
+     * @param file 目标文件
+     * @return 编辑会话
+     * @throws IllegalArgumentException 文件为 {@code null} 时抛出
+     * @throws FileStudioException      文件无法解析时抛出
+     */
     public EditorSession open(File file) {
         if (file == null) throw new IllegalArgumentException("file is null");
         String key = EditorSession.normalize(file.getAbsolutePath());
@@ -44,23 +56,43 @@ public final class EditorSessionManager {
         return session;
     }
 
-    /** 按路径查找会话（规范化后）。 */
+    /**
+     * 按路径查找会话（规范化后）。
+     *
+     * @param path 文件路径
+     * @return 对应会话，未打开时为 {@link Optional#empty()}
+     */
     public Optional<EditorSession> get(String path) {
         return Optional.ofNullable(sessions.get(EditorSession.normalize(path)));
     }
 
+    /**
+     * 按文件查找会话。
+     *
+     * @param file 目标文件，{@code null} 时返回空
+     * @return 对应会话，未打开时为 {@link Optional#empty()}
+     */
     public Optional<EditorSession> get(File file) {
         return file == null ? Optional.empty() : get(file.getAbsolutePath());
     }
 
-    /** 当前活动会话。 */
+    /**
+     * 当前活动会话。
+     *
+     * @return 活动会话；无活动会话或已关闭时为 {@link Optional#empty()}
+     */
     public Optional<EditorSession> active() {
         if (activeKey == null) return Optional.empty();
         EditorSession s = sessions.get(activeKey);
         return s != null && !s.isClosed() ? Optional.of(s) : Optional.empty();
     }
 
-    /** 设置活动会话。会话不存在或已关闭时忽略。 */
+    /**
+     * 设置活动会话。会话不存在或已关闭时忽略。
+     *
+     * @param path 文件路径
+     * @return 设置成功时为 true
+     */
     public boolean setActive(String path) {
         EditorSession s = sessions.get(EditorSession.normalize(path));
         if (s == null || s.isClosed()) return false;
@@ -68,12 +100,21 @@ public final class EditorSessionManager {
         return true;
     }
 
-    /** 设置活动会话（File 重载）。 */
+    /**
+     * 设置活动会话（File 重载）。
+     *
+     * @param file 目标文件，{@code null} 时返回 false
+     * @return 设置成功时为 true
+     */
     public boolean setActive(File file) {
         return file != null && setActive(file.getAbsolutePath());
     }
 
-    /** 所有打开会话（按打开顺序）。 */
+    /**
+     * 所有打开会话（按打开顺序）。
+     *
+     * @return 不可变会话列表，已关闭的会话被过滤
+     */
     public List<EditorSession> list() {
         List<EditorSession> result = new ArrayList<>();
         for (EditorSession s : sessions.values()) {
@@ -82,7 +123,11 @@ public final class EditorSessionManager {
         return List.copyOf(result);
     }
 
-    /** 打开会话数量。 */
+    /**
+     * 打开会话数量。
+     *
+     * @return 未关闭的会话数
+     */
     public int size() {
         int n = 0;
         for (EditorSession s : sessions.values()) {
@@ -91,13 +136,23 @@ public final class EditorSessionManager {
         return n;
     }
 
-    /** 是否已打开指定路径。 */
+    /**
+     * 是否已打开指定路径。
+     *
+     * @param path 文件路径
+     * @return 会话存在且未关闭时为 true
+     */
     public boolean isOpen(String path) {
         EditorSession s = sessions.get(EditorSession.normalize(path));
         return s != null && !s.isClosed();
     }
 
-    /** 关闭指定会话。返回是否成功。 */
+    /**
+     * 关闭指定会话。关闭活动会话时自动切换到其它会话。
+     *
+     * @param path 文件路径
+     * @return 关闭成功时为 true
+     */
     public boolean close(String path) {
         EditorSession s = sessions.remove(EditorSession.normalize(path));
         if (s == null || s.isClosed()) return false;
@@ -108,6 +163,12 @@ public final class EditorSessionManager {
         return true;
     }
 
+    /**
+     * 关闭指定会话（File 重载）。
+     *
+     * @param file 目标文件，{@code null} 时返回 false
+     * @return 关闭成功时为 true
+     */
     public boolean close(File file) {
         return file != null && close(file.getAbsolutePath());
     }
@@ -121,7 +182,11 @@ public final class EditorSessionManager {
         activeKey = null;
     }
 
-    /** 是否所有会话都已保存（无未保存修改）。 */
+    /**
+     * 是否所有会话都已保存（无未保存修改）。
+     *
+     * @return 存在任一未保存修改时为 true
+     */
     public boolean hasUnsavedChanges() {
         for (EditorSession s : sessions.values()) {
             if (!s.isClosed() && s.isModified()) return true;
@@ -129,7 +194,13 @@ public final class EditorSessionManager {
         return false;
     }
 
-    /** 由解析异常返回的文件打开失败信息。 */
+    /**
+     * 由解析异常生成用户可读的文件打开失败信息。
+     *
+     * @param file 打开失败的文件
+     * @param e    解析异常
+     * @return 形如 {@code "Failed to open x.txt: <原因>"} 的描述
+     */
     public static String describeError(File file, FileStudioException e) {
         return "Failed to open " + file.getName() + ": " + e.getMessage();
     }

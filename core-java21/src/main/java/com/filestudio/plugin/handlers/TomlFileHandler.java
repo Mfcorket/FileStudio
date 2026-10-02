@@ -18,6 +18,11 @@ import java.util.regex.Pattern;
  */
 public class TomlFileHandler extends AbstractTextHandler {
 
+    /**
+     * TOML 处理器。
+     */
+    public TomlFileHandler() {}
+
     private static final int MAX_TABLE_NAMES = 32;
     private static final Pattern ARRAY_TABLE = Pattern.compile("^\\s*\\[\\[([^\\]]+)\\]\\]\\s*(?:#.*)?$");
     private static final Pattern TABLE = Pattern.compile("^\\s*\\[([^\\]]+)\\]\\s*(?:#.*)?$");

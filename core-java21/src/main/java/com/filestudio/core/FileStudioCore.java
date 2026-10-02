@@ -51,6 +51,11 @@ import java.util.List;
  */
 public final class FileStudioCore {
 
+    /**
+     * 创建未初始化的核心实例，需先调用 {@link #init()}。
+     */
+    public FileStudioCore() {}
+
     private final PluginManager pluginManager = new PluginManager();
     private final DocumentParser parser = new DocumentParser(pluginManager);
     private volatile boolean initialized;
@@ -95,51 +100,101 @@ public final class FileStudioCore {
         return Collections.unmodifiableList(list);
     }
 
-    /** 解析文件路径为统一文档模型。 */
+    /**
+     * 解析文件路径为统一文档模型。
+     *
+     * @param path 文件路径
+     * @return 文档实例
+     * @throws IllegalStateException 核心未初始化时抛出
+     */
     public Document parseFile(String path) {
         ensureInit();
         return parser.parse(new File(path));
     }
 
+    /**
+     * 解析文件为统一文档模型。
+     *
+     * @param file 目标文件
+     * @return 文档实例
+     * @throws IllegalStateException 核心未初始化时抛出
+     */
     public Document parseFile(File file) {
         ensureInit();
         return parser.parse(file);
     }
 
-    /** 保存文档到指定路径。 */
+    /**
+     * 保存文档到指定路径。
+     *
+     * @param doc  待保存文档
+     * @param path 目标路径
+     * @throws IllegalStateException 核心未初始化时抛出
+     */
     public void saveDocument(Document doc, String path) {
         ensureInit();
         parser.save(doc, new File(path));
     }
 
+    /**
+     * 保存文档到指定文件。
+     *
+     * @param doc    待保存文档
+     * @param output 目标文件
+     * @throws IllegalStateException 核心未初始化时抛出
+     */
     public void saveDocument(Document doc, File output) {
         ensureInit();
         parser.save(doc, output);
     }
 
-    /** 列出所有已注册格式处理器信息。 */
+    /**
+     * 列出所有已注册格式处理器信息。
+     *
+     * @return 处理器描述列表（含 SPI 插件）
+     * @throws IllegalStateException 核心未初始化时抛出
+     */
     public List<PluginHandlerInfo> listHandlers() {
         ensureInit();
         return pluginManager.listHandlers();
     }
 
-    /** 创建一个与当前核心绑定的编辑会话。 */
+    /**
+     * 创建一个与当前核心绑定的编辑会话。
+     *
+     * @return 编辑器引擎实例
+     * @throws IllegalStateException 核心未初始化时抛出
+     */
     public EditorEngine newEditor() {
         ensureInit();
         return new EditorEngine(parser);
     }
 
-    /** 创建一个与当前核心绑定的多标签会话管理器。 */
+    /**
+     * 创建一个与当前核心绑定的多标签会话管理器。
+     *
+     * @return 会话管理器实例
+     * @throws IllegalStateException 核心未初始化时抛出
+     */
     public EditorSessionManager newSessionManager() {
         ensureInit();
         return new EditorSessionManager(parser);
     }
 
-    /** 暴露插件管理器，便于高级用法（动态安装插件等）。 */
+    /**
+     * 暴露插件管理器，便于高级用法（动态安装插件等）。
+     *
+     * @return 插件管理器实例
+     */
     public PluginManager getPluginManager() {
         return pluginManager;
     }
 
+    /**
+     * 暴露文档解析器。
+     *
+     * @return 文档解析器实例
+     */
     public DocumentParser getParser() {
         return parser;
     }

@@ -23,6 +23,11 @@ import java.util.Map;
  */
 public final class SamplePlugin implements FileStudioPlugin {
 
+    /**
+     * 创建示例插件实例。
+     */
+    public SamplePlugin() {}
+
     @Override
     public String getName() {
         return "com.filestudio.sample";
@@ -40,6 +45,12 @@ public final class SamplePlugin implements FileStudioPlugin {
 
     /** .sample 格式处理器。 */
     public static final class SampleHandler implements FileHandler {
+
+        /**
+         * 创建处理器实例。
+         */
+        public SampleHandler() {}
+
 
         @Override
         public String getExtension() {

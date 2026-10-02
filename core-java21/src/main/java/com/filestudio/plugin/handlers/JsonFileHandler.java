@@ -14,6 +14,11 @@ import java.util.Map;
  */
 public class JsonFileHandler extends AbstractTextHandler {
 
+    /**
+     * JSON 处理器。
+     */
+    public JsonFileHandler() {}
+
     @Override
     public String getExtension() {
         return "json";

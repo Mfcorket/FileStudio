@@ -21,6 +21,7 @@ public record PluginHandlerInfo(String pluginName,
                                 EditCapability editCapability,
                                 String description) {
 
+    /** 紧凑构造器：校验必填字段并归一化可选描述。 */
     public PluginHandlerInfo {
         Objects.requireNonNull(pluginName, "pluginName");
         Objects.requireNonNull(pluginVersion, "pluginVersion");
@@ -30,6 +31,11 @@ public record PluginHandlerInfo(String pluginName,
         description = description == null ? "" : description;
     }
 
+    /**
+     * 空处理器列表常量。
+     *
+     * @return 空列表
+     */
     public static List<PluginHandlerInfo> emptyList() {
         return List.of();
     }

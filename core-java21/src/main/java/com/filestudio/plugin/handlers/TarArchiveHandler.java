@@ -24,6 +24,11 @@ import java.util.Map;
  */
 public class TarArchiveHandler implements FileHandler {
 
+    /**
+     * TAR 归档处理器。
+     */
+    public TarArchiveHandler() {}
+
     private static final int BLOCK_SIZE = 512;
     private static final int MAX_ENTRIES_TO_LIST = 512;
 
@@ -101,7 +106,14 @@ public class TarArchiveHandler implements FileHandler {
         return meta;
     }
 
-    /** 条目描述。不可变。 */
+    /**
+     * 条目描述。不可变。
+     *
+     * @param name 归档内路径，使用 {@code /} 分隔
+     * @param size 未压缩大小（字节）
+     * @param type 条目类型标志：{@code '0'} 普通文件、{@code '5'} 目录、{@code '2'} 符号链接
+     * @param mode 八进制权限字符串，如 {@code "0644"}
+     */
     public record TarEntryInfo(String name, long size, char type, String mode) {}
 
     /** 归档概览。不可变。 */

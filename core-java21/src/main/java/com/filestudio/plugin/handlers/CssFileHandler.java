@@ -18,6 +18,11 @@ import java.util.regex.Pattern;
  */
 public class CssFileHandler extends AbstractTextHandler {
 
+    /**
+     * CSS 样式表处理器。
+     */
+    public CssFileHandler() {}
+
     private static final int MAX_AT_RULES = 16;
     private static final Pattern AT_RULE = Pattern.compile("@([a-zA-Z-]+)");
     private static final Pattern PROPERTY = Pattern.compile(

@@ -31,16 +31,32 @@ public final class EditorEngine {
     private String baseline;
     private Document document;
 
+    /**
+     * 构造编辑引擎，使用默认历史管理器。
+     *
+     * @param parser 文档解析器，用于保存时回写文件
+     */
     public EditorEngine(DocumentParser parser) {
         this(parser, new HistoryManager());
     }
 
+    /**
+     * 构造编辑引擎。
+     *
+     * @param parser  文档解析器，用于保存时回写文件
+     * @param history 历史管理器，共享实例可跨会话保留撤销栈
+     */
     public EditorEngine(DocumentParser parser, HistoryManager history) {
         this.parser = Objects.requireNonNull(parser, "parser");
         this.history = Objects.requireNonNull(history, "history");
     }
 
-    /** 从已解析的文档打开编辑会话。 */
+    /**
+     * 从已解析的文档打开编辑会话。会清空历史并重置修改状态。
+     *
+     * @param doc 待编辑的文档
+     * @throws NullPointerException 文档为 {@code null} 时抛出
+     */
     public void open(Document doc) {
         Objects.requireNonNull(doc, "doc");
         this.document = doc;
@@ -50,23 +66,44 @@ public final class EditorEngine {
         history.pushCoalesced(this.baseline);
     }
 
-    /** 以纯内容新建一个编辑会话（未关联文件路径）。 */
+    /**
+     * 以纯内容新建一个编辑会话（未关联文件路径）。
+     *
+     * @param content   初始内容，{@code null} 视为空串
+     * @param mimeType  MIME 类型，{@code null} 时归一化为 {@code application/octet-stream}
+     * @param extension 扩展名，{@code null} 时归一化为空串
+     */
     public void openContent(String content, String mimeType, String extension) {
         Document doc = new Document(null, mimeType, extension, content, java.util.Map.of(),
                 content == null ? 0 : content.length(), EditCapability.FULL);
         open(doc);
     }
 
-    /** 当前文档内容。未打开文档时为 null。 */
+    /**
+     * 当前文档内容。
+     *
+     * @return 内容文本；未打开文档时为 {@code null}
+     */
     public String getContent() {
         return history.getCurrent();
     }
 
+    /**
+     * 当前文档模型。
+     *
+     * @return 文档实例；未打开文档时为 {@code null}
+     */
     public Document getDocument() {
         return document;
     }
 
-    /** 整段替换内容。记录一个撤销点。 */
+    /**
+     * 整段替换内容。记录一个撤销点。
+     *
+     * @param newContent 新内容，{@code null} 视为空串
+     * @throws IllegalStateException       未打开文档时抛出
+     * @throws FileStudioException        文档不具备 FULL 编辑能力时抛出
+     */
     public void edit(String newContent) {
         requireOpen();
         String safe = newContent == null ? "" : newContent;
@@ -75,7 +112,16 @@ public final class EditorEngine {
         commit(safe);
     }
 
-    /** 区间替换：[start, end) 的内容替换为 replacement。 */
+    /**
+     * 区间替换：{@code [start, end)} 的内容替换为 {@code replacement}。
+     *
+     * @param start       区间起始偏移，超界时收敛到文本边界
+     * @param end         区间结束偏移，超界时收敛到文本边界
+     * @param replacement 替换文本，{@code null} 或空串表示删除
+     * @throws IllegalStateException    未打开文档时抛出
+     * @throws FileStudioException     文档不具备 FULL 编辑能力时抛出
+     * @throws IllegalArgumentException 起点大于终点时抛出
+     */
     public void replaceRange(int start, int end, String replacement) {
         requireOpen();
         ensureWritable();
@@ -94,17 +140,33 @@ public final class EditorEngine {
         commit(result);
     }
 
-    /** 在指定位置插入文本。 */
+    /**
+     * 在指定位置插入文本。空文本不产生撤销点。
+     *
+     * @param position 插入偏移，超界时收敛到文本边界
+     * @param text      待插入文本，{@code null} 或空串时不做任何事
+     */
     public void insertAt(int position, String text) {
         if (text == null || text.isEmpty()) return;
         replaceRange(position, position, text);
     }
 
-    /** 删除指定区间。 */
+    /**
+     * 删除指定区间。
+     *
+     * @param start 区间起始偏移
+     * @param end   区间结束偏移
+     */
     public void deleteRange(int start, int end) {
         replaceRange(start, end, "");
     }
 
+    /**
+     * 撤销上一步编辑。
+     *
+     * @return 撤销后的内容
+     * @throws IllegalStateException 未打开文档时抛出
+     */
     public String undo() {
         requireOpen();
         String restored = history.undo();
@@ -112,6 +174,12 @@ public final class EditorEngine {
         return restored;
     }
 
+    /**
+     * 重做下一步编辑。
+     *
+     * @return 重做后的内容
+     * @throws IllegalStateException 未打开文档时抛出
+     */
     public String redo() {
         requireOpen();
         String restored = history.redo();
@@ -119,25 +187,52 @@ public final class EditorEngine {
         return restored;
     }
 
+    /**
+     * 是否可撤销。
+     *
+     * @return 存在可撤销的历史点时为 true
+     */
     public boolean canUndo() {
         return history.canUndo();
     }
 
+    /**
+     * 是否可重做。
+     *
+     * @return 存在可重做的历史点时为 true
+     */
     public boolean canRedo() {
         return history.canRedo();
     }
 
-    /** 文档是否相对基准（上次打开/保存）被修改。 */
+    /**
+     * 文档是否相对基准（上次打开/保存）被修改。
+     *
+     * @return 内容与基准不一致时为 true；未打开文档时为 false
+     */
     public boolean isModified() {
         String cur = history.getCurrent();
         return baseline != null && !baseline.equals(cur);
     }
 
-    /** 把当前内容落盘，并更新基准内容。 */
+    /**
+     * 把当前内容落盘，并更新基准内容。
+     *
+     * @param path 目标路径
+     * @throws IllegalStateException 未打开文档时抛出
+     * @throws FileStudioException  文档不可写或无匹配处理器时抛出
+     */
     public void save(String path) {
         save(new File(path));
     }
 
+    /**
+     * 把当前内容落盘，并更新基准内容与文档路径。
+     *
+     * @param output 目标文件
+     * @throws IllegalStateException 未打开文档时抛出
+     * @throws FileStudioException  文档不可写或无匹配处理器时抛出
+     */
     public void save(File output) {
         requireOpen();
         ensureWritable();
@@ -147,6 +242,13 @@ public final class EditorEngine {
         this.baseline = history.getCurrent();
     }
 
+    /**
+     * 把当前内容落盘，并更新基准内容。
+     *
+     * @param path 目标路径
+     * @throws IllegalStateException 未打开文档时抛出
+     * @throws FileStudioException  文档不可写或无匹配处理器时抛出
+     */
     public void save(Path path) {
         save(path.toFile());
     }
@@ -156,11 +258,20 @@ public final class EditorEngine {
         this.baseline = history.getCurrent();
     }
 
+    /**
+     * 底层历史管理器。
+     *
+     * @return 历史管理器实例
+     */
     public HistoryManager history() {
         return history;
     }
 
-    /** 当前文档是否为可编辑能力。 */
+    /**
+     * 当前文档是否为可编辑能力。
+     *
+     * @return 能力为 {@link EditCapability#FULL} 时为 true
+     */
     public boolean isWritable() {
         return document != null && document.getEditCapability() == EditCapability.FULL;
     }

@@ -25,10 +25,19 @@ public class TextFileHandler extends AbstractTextHandler {
     private final String extension;
     private final String description;
 
+    /**
+     * 创建默认纯文本处理器（扩展名 {@code txt}）。
+     */
     public TextFileHandler() {
         this("txt", "Plain text file");
     }
 
+    /**
+     * 创建指定扩展名的纯文本处理器。
+     *
+     * @param extension   扩展名，为空时归一化为 {@code txt}；自动转小写
+     * @param description 格式描述，为 {@code null} 时使用默认描述
+     */
     public TextFileHandler(String extension, String description) {
         this.extension = extension == null || extension.isBlank() ? "txt" : extension.toLowerCase();
         this.description = description == null ? "Plain text file" : description;

@@ -14,6 +14,11 @@ import java.util.regex.Pattern;
  */
 public class MarkdownFileHandler extends AbstractTextHandler {
 
+    /**
+     * Markdown 处理器。
+     */
+    public MarkdownFileHandler() {}
+
     private static final Pattern HEADING = Pattern.compile("^(#{1,6})\\s+(.+?)\\s*#*$", Pattern.MULTILINE);
     private static final Pattern LINK = Pattern.compile("!?\\[[^\\]]*\\]\\([^)]*\\)");
     private static final Pattern LIST_ITEM = Pattern.compile("^(?:[\\s]*[-*+]|\\s*\\d+\\.)\\s+", Pattern.MULTILINE);

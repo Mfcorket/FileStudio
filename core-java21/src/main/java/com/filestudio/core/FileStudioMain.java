@@ -21,6 +21,19 @@ import java.util.List;
  */
 public final class FileStudioMain {
 
+    /**
+     * 创建命令行演示入口实例。
+     */
+    public FileStudioMain() {}
+
+    /**
+     * 命令行演示入口。
+     *
+     * <p>无参数时运行内置功能演示（撤销/重做、高亮、搜索替换、格式处理器、
+     * 行索引、统计、书签）；传入文件路径时解析并打印该文件。
+     *
+     * @param args 可选的单个参数：要解析的文件路径
+     */
     public static void main(String[] args) {
         FileStudioCore core = new FileStudioCore();
         core.init();

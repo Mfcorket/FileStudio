@@ -46,7 +46,12 @@ public final class DocumentStats {
         this.crCount = crCount;
     }
 
-    /** 计算内容统计。content 为 null 时按空串处理。 */
+    /**
+     * 计算内容统计。
+     *
+     * @param content 待统计文本，{@code null} 时按空串处理
+     * @return 统计结果
+     */
     public static DocumentStats of(String content) {
         String c = content == null ? "" : content;
         LineIndex idx = LineIndex.of(c);
@@ -93,37 +98,81 @@ public final class DocumentStats {
                 lf, crlf, cr);
     }
 
-    /** 总行数（与 LineIndex.lineCount 一致）。 */
+    /**
+     * 总行数（与 LineIndex.lineCount 一致）。
+     *
+     * @return 行数
+     */
     public int lineCount() { return lineCount; }
 
-    /** 字符数（UTF-16 code unit 数）。 */
+    /**
+     * 字符数（UTF-16 code unit 数）。
+     *
+     * @return 字符数
+     */
     public int charCount() { return charCount; }
 
-    /** 近似字数：按空白切分的非空片段计数。 */
+    /**
+     * 近似字数：按空白切分的非空片段计数。
+     *
+     * @return 字数
+     */
     public int wordCount() { return wordCount; }
 
-    /** Unicode 码点数（正确处理 emoji 等补充平面字符）。 */
+    /**
+     * Unicode 码点数（正确处理 emoji 等补充平面字符）。
+     *
+     * @return 码点数
+     */
     public int codePointCount() { return codePointCount; }
 
-    /** 最长行的字符长度（不含换行符）。 */
+    /**
+     * 最长行的字符长度（不含换行符）。
+     *
+     * @return 最长行字符数
+     */
     public int longestLine() { return longestLine; }
 
-    /** 主导换行符风格。 */
+    /**
+     * 主导换行符风格。
+     *
+     * @return 主导换行风格；混用时为 {@link LineEnding#MIXED}
+     */
     public LineEnding lineEnding() { return lineEnding; }
 
-    /** LF 换行符数量（不含 CRLF 中的 LF）。 */
+    /**
+     * LF 换行符数量（不含 CRLF 中的 LF）。
+     *
+     * @return LF 数量
+     */
     public int lfCount() { return lfCount; }
 
-    /** CRLF 换行符数量。 */
+    /**
+     * CRLF 换行符数量。
+     *
+     * @return CRLF 数量
+     */
     public int crlfCount() { return crlfCount; }
 
-    /** 单独的 CR 换行符数量。 */
+    /**
+     * 单独的 CR 换行符数量。
+     *
+     * @return CR 数量
+     */
     public int crCount() { return crCount; }
 
-    /** 总换行符数量（按逻辑行计：LF + CRLF + CR）。 */
+    /**
+     * 总换行符数量（按逻辑行计）。
+     *
+     * @return LF + CRLF + CR 之和
+     */
     public int totalLineBreaks() { return lfCount + crlfCount + crCount; }
 
-    /** 是否为空文档。 */
+    /**
+     * 是否为空文档。
+     *
+     * @return 字符数为 0 时为 true
+     */
     public boolean isEmpty() { return charCount == 0; }
 
     @Override

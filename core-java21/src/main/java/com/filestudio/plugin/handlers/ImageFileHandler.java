@@ -32,6 +32,11 @@ import java.util.Set;
  */
 public class ImageFileHandler implements FileHandler {
 
+    /**
+     * 图片格式处理器。
+     */
+    public ImageFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
 
     @Override

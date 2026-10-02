@@ -6,10 +6,21 @@ package com.filestudio.core;
  */
 public class FileStudioException extends RuntimeException {
 
+    /**
+     * 以错误消息构造。
+     *
+     * @param message 错误描述
+     */
     public FileStudioException(String message) {
         super(message);
     }
 
+    /**
+     * 以错误消息和根因构造。
+     *
+     * @param message 错误描述
+     * @param cause   底层异常
+     */
     public FileStudioException(String message, Throwable cause) {
         super(message, cause);
     }

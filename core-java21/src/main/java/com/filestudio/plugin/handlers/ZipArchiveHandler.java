@@ -27,6 +27,11 @@ import java.util.Map;
  */
 public class ZipArchiveHandler implements FileHandler {
 
+    /**
+     * ZIP 归档处理器。
+     */
+    public ZipArchiveHandler() {}
+
     private static final int EOCD_SIG = 0x06054b50;
     private static final int CEN_SIG = 0x02014b50;
     private static final int MAX_ENTRIES_TO_LIST = 512;
@@ -109,7 +114,14 @@ public class ZipArchiveHandler implements FileHandler {
         return meta;
     }
 
-    /** 条目描述。不可变。 */
+    /**
+     * 条目描述。不可变。
+     *
+     * @param name            归档内路径，使用 {@code /} 分隔
+     * @param compressedSize  压缩后大小（字节）
+     * @param uncompressedSize 原始大小（字节）
+     * @param isDirectory     是否为目录条目（以 {@code /} 结尾）
+     */
     public record ZipEntryInfo(String name, long compressedSize, long uncompressedSize, boolean isDirectory) {}
 
     /** 归档概览。不可变。 */

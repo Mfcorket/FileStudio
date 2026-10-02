@@ -28,47 +28,92 @@ public final class EditorSession {
         this.bookmarks.load(file);
     }
 
-    /** 会话对应的文件。 */
+    /**
+     * 会话对应的文件。
+     *
+     * @return 文件对象
+     */
     public File getFile() {
         return file;
     }
 
-    /** 规范化后的路径标识（用于会话查找）。 */
+    /**
+     * 规范化后的路径标识（用于会话查找）。
+     *
+     * @return 规范化路径键
+     */
     public String getKey() {
         return normalize(file.getAbsolutePath());
     }
 
+    /**
+     * 绝对路径。
+     *
+     * @return 文件绝对路径
+     */
     public String getPath() {
         return file.getAbsolutePath();
     }
 
+    /**
+     * 文件名（含扩展名）。
+     *
+     * @return 文件名
+     */
     public String getFileName() {
         return file.getName();
     }
 
+    /**
+     * 编辑器引擎。
+     *
+     * @return 编辑器引擎实例
+     */
     public EditorEngine getEditor() {
         return editor;
     }
 
+    /**
+     * 书签管理器。
+     *
+     * @return 书签管理器实例
+     */
     public BookmarkManager getBookmarks() {
         return bookmarks;
     }
 
-    /** 当前文档模型（始终反映编辑器当前内容）。 */
+    /**
+     * 当前文档模型（始终反映编辑器当前内容）。
+     *
+     * @return 文档实例
+     */
     public Document getDocument() {
         return editor.getDocument();
     }
 
-    /** 当前内容的行索引（每次调用按需重建，反映最新编辑）。 */
+    /**
+     * 当前内容的行索引（每次调用按需重建，反映最新编辑）。
+     *
+     * @return 行索引实例
+     */
     public LineIndex lineIndex() {
         return LineIndex.of(editor.getContent());
     }
 
-    /** 当前内容的统计信息。 */
+    /**
+     * 当前内容的统计信息。
+     *
+     * @return 统计结果
+     */
     public DocumentStats stats() {
         return DocumentStats.of(editor.getContent());
     }
 
+    /**
+     * 内容是否已被修改且未保存。
+     *
+     * @return 存在未保存修改时为 true
+     */
     public boolean isModified() {
         return editor.isModified();
     }
@@ -79,7 +124,11 @@ public final class EditorSession {
         bookmarks.save(file);
     }
 
-    /** 是否已关闭。 */
+    /**
+     * 是否已关闭。
+     *
+     * @return 会话已关闭时为 true
+     */
     public boolean isClosed() {
         return closed;
     }

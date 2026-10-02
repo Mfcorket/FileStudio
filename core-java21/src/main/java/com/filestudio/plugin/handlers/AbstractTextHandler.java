@@ -105,10 +105,20 @@ public abstract class AbstractTextHandler implements FileHandler {
         return meta;
     }
 
-    /** 子类可覆写以追加格式特定元数据。入参 meta 在 Document 构建前传入，可自由写入。 */
+    /**
+     * 子类可覆写以追加格式特定元数据。
+     *
+     * @param meta    通用元数据表，在 Document 构建前传入，可自由写入
+     * @param content 已解码内容；文件超过 {@link #MAX_IN_MEMORY_BYTES} 时为空串
+     */
     protected void enrichMetadata(Map<String, Object> meta, String content) {}
 
-    /** 计算换行符数量 + 1，作为行数。空串计为 1 行。 */
+    /**
+     * 计算行数（换行符数量 + 1）。空串计为 1 行。
+     *
+     * @param content 待统计内容
+     * @return 行数
+     */
     protected static int countLines(String content) {
         if (content.isEmpty()) return 1;
         int n = 0;
@@ -118,7 +128,12 @@ public abstract class AbstractTextHandler implements FileHandler {
         return n + 1;
     }
 
-    /** 通用元数据访问器，便于子类在 {@link #enrichMetadata} 中读取。 */
+    /**
+     * 通用元数据访问器，便于子类在 {@link #enrichMetadata} 中读取。
+     *
+     * @param name 文件名
+     * @return 小写扩展名（不含点），无扩展名时为空串
+     */
     protected static String getExtensionFromName(String name) {
         int dot = name.lastIndexOf('.');
         return dot < 0 ? "" : name.substring(dot + 1).toLowerCase();

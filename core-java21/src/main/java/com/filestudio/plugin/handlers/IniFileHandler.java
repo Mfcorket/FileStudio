@@ -15,6 +15,11 @@ import java.util.Map;
  */
 public class IniFileHandler extends AbstractTextHandler {
 
+    /**
+     * INI 配置文件处理器。
+     */
+    public IniFileHandler() {}
+
     private static final int MAX_SECTION_NAMES = 32;
 
     @Override

@@ -13,6 +13,11 @@ import java.util.Map;
  */
 public class PropertiesFileHandler extends AbstractTextHandler {
 
+    /**
+     * 创建 properties 处理器实例。
+     */
+    public PropertiesFileHandler() {}
+
     @Override
     public String getExtension() {
         return "properties";

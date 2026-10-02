@@ -44,17 +44,31 @@ public final class SyntaxLanguageRegistry {
 
     private SyntaxLanguageRegistry() {}
 
-    /** 所有已注册配置（按注册顺序）。 */
+    /**
+     * 所有已注册配置（按注册顺序）。
+     *
+     * @return 不可变配置列表
+     */
     public static List<SyntaxProfile> all() {
         return List.copyOf(BY_ID.values());
     }
 
-    /** 按语言 id 查找。 */
+    /**
+     * 按语言 id 查找。
+     *
+     * @param id 语言 id，如 {@code "java"}
+     * @return 对应配置；未注册时为 {@link Optional#empty()}
+     */
     public static Optional<SyntaxProfile> findById(String id) {
         return Optional.ofNullable(BY_ID.get(id));
     }
 
-    /** 按扩展名查找（小写，不含点）。失败返回纯文本兜底。 */
+    /**
+     * 按扩展名查找。
+     *
+     * @param extension 扩展名，可带前导点，忽略大小写
+     * @return 对应配置；未匹配时返回纯文本兜底
+     */
     public static SyntaxProfile byExtension(String extension) {
         String key = extension == null ? "" : extension.toLowerCase().strip();
         if (!key.isEmpty() && key.startsWith(".")) key = key.substring(1);
@@ -62,7 +76,12 @@ public final class SyntaxLanguageRegistry {
         return p != null ? p : PLAIN_TEXT;
     }
 
-    /** 按 MIME 查找。失败返回纯文本兜底。 */
+    /**
+     * 按 MIME 查找。
+     *
+     * @param mimeType MIME 类型，忽略大小写
+     * @return 对应配置；未匹配或参数为 {@code null} 时返回纯文本兜底
+     */
     public static SyntaxProfile byMime(String mimeType) {
         if (mimeType == null) return PLAIN_TEXT;
         for (SyntaxProfile p : BY_ID.values()) {
@@ -71,7 +90,12 @@ public final class SyntaxLanguageRegistry {
         return PLAIN_TEXT;
     }
 
-    /** 为指定路径创建高亮器。 */
+    /**
+     * 为指定路径创建高亮器。
+     *
+     * @param path 文件路径或文件名，据扩展名推断语言
+     * @return 语法高亮器实例
+     */
     public static SyntaxHighlighter forPath(String path) {
         String name = path == null ? "" : path;
         int dot = name.lastIndexOf('.');

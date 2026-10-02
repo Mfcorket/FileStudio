@@ -18,6 +18,11 @@ import java.util.regex.Pattern;
  */
 public class YamlFileHandler extends AbstractTextHandler {
 
+    /**
+     * YAML 处理器。
+     */
+    public YamlFileHandler() {}
+
     private static final Pattern DOC_SEP = Pattern.compile("(?m)^---\\s*$");
     private static final Pattern TOP_KEY = Pattern.compile("^[A-Za-z_][A-Za-z0-9_.\\-]*\\s*:");
     private static final Pattern LIST_ITEM = Pattern.compile("^\\s*-\\s+");

@@ -19,7 +19,13 @@ public final class EncodingDetector {
 
     private EncodingDetector() {}
 
-    /** 返回 [charset, consumeBom]。consumeBom 为 true 时调用方应跳过对应 BOM 字节数。 */
+    /**
+     * 读取文件头部字节并检测编码。
+     *
+     * @param path 目标文件
+     * @return 编码与 BOM 长度
+     * @throws FileStudioException 读取失败时抛出
+     */
     public static CharsetAndBom detect(Path path) {
         try (InputStream in = new BufferedInputStream(Files.newInputStream(path))) {
             byte[] bom = new byte[4];
@@ -30,6 +36,15 @@ public final class EncodingDetector {
         }
     }
 
+    /**
+     * 从字节前缀检测编码。
+     *
+     * <p>识别 UTF-8 / UTF-16LE / UTF-16BE 的 BOM；无 BOM 时回退 UTF-8。
+     *
+     * @param head 文件头字节
+     * @param len  有效字节数
+     * @return 编码与 BOM 长度
+     */
     public static CharsetAndBom detect(byte[] head, int len) {
         if (len >= 3 && (head[0] & 0xFF) == 0xEF && (head[1] & 0xFF) == 0xBB && (head[2] & 0xFF) == 0xBF) {
             return new CharsetAndBom(StandardCharsets.UTF_8, 3);
@@ -43,5 +58,11 @@ public final class EncodingDetector {
         return new CharsetAndBom(StandardCharsets.UTF_8, 0);
     }
 
+    /**
+     * 编码与 BOM 长度。不可变。
+     *
+     * @param charset  检测出的字符集
+     * @param bomBytes BOM 字节数，调用方解码时应跳过该数量；无 BOM 时为 0
+     */
     public record CharsetAndBom(Charset charset, int bomBytes) {}
 }

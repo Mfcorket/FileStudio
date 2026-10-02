@@ -31,6 +31,11 @@ import java.util.Set;
  */
 public class AudioFileHandler implements FileHandler {
 
+    /**
+     * 音频格式处理器。
+     */
+    public AudioFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("wav", "flac", "mp3", "ogg", "oga");
 
     @Override
