@@ -1,0 +1,38 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Native image build artifacts
+native-image-output/
+
+# Logs
+*.log
+
+# Local verify build output (direct javac compile)
+.verify-classes/
+
+# Local wrapper download temp
+.gradle-dl/
+.build-wrapper-tmp/
