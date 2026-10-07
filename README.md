@@ -1,5 +1,7 @@
 # FileStudio
 
+[![CI](https://github.com/Mfcorket/FileStudio/actions/workflows/ci.yml/badge.svg)](https://github.com/Mfcorket/FileStudio/actions/workflows/ci.yml)
+
 > Cross-platform file viewer & editor — **Phase 0 complete, Phase 1 engine work in progress**.
 > Version: 0.1.0 · Target: Windows 8.1+, macOS 12+, Linux, Android 9+
 > Core: Java 21 · UI (later): Kotlin Multiplatform + Compose Multiplatform · Build: Gradle 8.14
