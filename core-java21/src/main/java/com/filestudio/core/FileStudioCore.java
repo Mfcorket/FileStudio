@@ -24,6 +24,7 @@ import com.filestudio.plugin.handlers.MarkdownFileHandler;
 import com.filestudio.plugin.handlers.ObjFileHandler;
 import com.filestudio.plugin.handlers.PdfFileHandler;
 import com.filestudio.plugin.handlers.PropertiesFileHandler;
+import com.filestudio.plugin.handlers.SevenZipFileHandler;
 import com.filestudio.plugin.handlers.SqliteFileHandler;
 import com.filestudio.plugin.handlers.StlFileHandler;
 import com.filestudio.plugin.handlers.TextFileHandler;
@@ -107,6 +108,7 @@ public final class FileStudioCore {
         list.add(new VideoFileHandler());
         list.add(new TarArchiveHandler());
         list.add(new GzipArchiveHandler());
+        list.add(new SevenZipFileHandler());
         list.add(new SqliteFileHandler());
         list.add(new JavaClassFileHandler());
         list.add(new ObjFileHandler());

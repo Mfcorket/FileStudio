@@ -66,7 +66,7 @@
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
 | zip | application/zip | PARTIAL | ZIP |
-| 7z | application/x-7z-compressed | PARTIAL | 7z |
+| 7z | application/x-7z-compressed | PARTIAL | 7-Zip \[内置\] SevenZipFileHandler 条目名/大小/目录 |
 | tar | application/x-tar | PARTIAL | tar \[内置\] TarArchiveHandler |
 | gz, gzip, tgz | application/gzip | PARTIAL | gzip \[内置\] GzipArchiveHandler |
 | rar | application/vnd.rar | PARTIAL | RAR |
