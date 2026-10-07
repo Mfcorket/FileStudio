@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.cert.X509Certificate;
+import java.security.KeyPair;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,7 +25,10 @@ class CertificateFileHandlerTest {
 
     private static Path pemFile;
     private static Path derFile;
+    private static Path p12File;
+    private static Path keyFile;
     private static X509Certificate generated;
+    private static KeyPair keyPair;
 
     /**
      * 运行时用纯 JDK 生成自签名证书。
@@ -35,12 +39,21 @@ class CertificateFileHandlerTest {
     @BeforeAll
     static void setUp(@TempDir Path tempDir) throws Exception {
         generated = SelfSignedCertGenerator.generate(CN, ORG);
+        keyPair = SelfSignedCertGenerator.generateKeyPair();
 
         pemFile = tempDir.resolve("test.pem");
         Files.writeString(pemFile, SelfSignedCertGenerator.toPem(generated), StandardCharsets.UTF_8);
 
         derFile = tempDir.resolve("test.der");
         Files.write(derFile, SelfSignedCertGenerator.toDer(generated));
+
+        p12File = tempDir.resolve("test.p12");
+        Files.write(p12File, SelfSignedCertGenerator.toPkcs12(
+                generated, keyPair, "filestudio", "changeit".toCharArray()));
+
+        keyFile = tempDir.resolve("test.key");
+        Files.writeString(keyFile, SelfSignedCertGenerator.privateKeyToPem(keyPair.getPrivate()),
+                StandardCharsets.UTF_8);
     }
 
     @Test
@@ -101,15 +114,63 @@ class CertificateFileHandlerTest {
     }
 
     @Test
+    void parsesPkcs12Keystore() {
+        Document doc = handler.parse(p12File.toFile());
+        assertEquals("PKCS#12 keystore", doc.getMetadata().get("type"));
+        assertEquals(true, doc.getMetadata().get("valid"));
+        assertNull(doc.getMetadata().get("error"), "不应报错: " + doc.getMetadata().get("error"));
+        assertEquals(1, doc.getMetadata().get("entryCount"));
+        assertEquals(1, doc.getMetadata().get("keyEntryCount"));
+        assertEquals(true, doc.getMetadata().get("hasPrivateKey"));
+        assertEquals(true, doc.getMetadata().get("passwordProtected"));
+        assertEquals("filestudio", ((java.util.List<?>) doc.getMetadata().get("aliases")).get(0));
+    }
+
+    @Test
+    void parsesPkcs12WithEmptyPassword(@TempDir Path tempDir) throws Exception {
+        Path p = tempDir.resolve("nopass.p12");
+        Files.write(p, SelfSignedCertGenerator.toPkcs12(
+                generated, keyPair, "nopass", new char[0]));
+
+        Document doc = handler.parse(p.toFile());
+        assertEquals("PKCS#12 keystore", doc.getMetadata().get("type"));
+        assertEquals(true, doc.getMetadata().get("hasPrivateKey"));
+        assertEquals(false, doc.getMetadata().get("passwordProtected"));
+    }
+
+    @Test
+    void parsesPemPrivateKey() {
+        Document doc = handler.parse(keyFile.toFile());
+        assertEquals("PEM private key", doc.getMetadata().get("type"));
+        assertEquals("PKCS#8", doc.getMetadata().get("keyEncoding"));
+        assertEquals("RSA", doc.getMetadata().get("keyAlgorithm"));
+        assertEquals(2048, doc.getMetadata().get("keySize"));
+        assertEquals(true, doc.getMetadata().get("valid"));
+        assertNull(doc.getMetadata().get("error"), "不应报错: " + doc.getMetadata().get("error"));
+    }
+
+    @Test
+    void keyAndCertificateAreDistinguished() {
+        // 证书不应被误判为私钥，反之亦然
+        assertEquals("X.509", handler.parse(pemFile.toFile()).getMetadata().get("type"));
+        assertEquals("PEM private key", handler.parse(keyFile.toFile()).getMetadata().get("type"));
+        assertEquals("PKCS#12 keystore", handler.parse(p12File.toFile()).getMetadata().get("type"));
+    }
+
+    @Test
     void canHandleByExtensionAndMagicBytes() {
         assertTrue(handler.canHandle(new java.io.File("a.pem")));
         assertTrue(handler.canHandle(new java.io.File("b.crt")));
         assertTrue(handler.canHandle(new java.io.File("c.der")));
-        assertFalse(handler.canHandle(new java.io.File("d.txt")));
+        assertTrue(handler.canHandle(new java.io.File("d.p12")));
+        assertTrue(handler.canHandle(new java.io.File("e.pfx")));
+        assertTrue(handler.canHandle(new java.io.File("f.key")));
+        assertFalse(handler.canHandle(new java.io.File("g.txt")));
 
         // 魔数识别：PEM 以 "-----" 开头，DER 以 SEQUENCE(0x30) 开头
         assertTrue(handler.canHandle(pemFile.toFile()));
         assertTrue(handler.canHandle(derFile.toFile()));
+        assertTrue(handler.canHandle(p12File.toFile()));
     }
 
     @Test

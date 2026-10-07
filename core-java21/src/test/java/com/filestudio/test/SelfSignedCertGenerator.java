@@ -235,4 +235,39 @@ public final class SelfSignedCertGenerator {
                 Date.from(now.plus(3650, ChronoUnit.DAYS))
         };
     }
+
+    /** 生成 RSA 密钥对（供私钥 / 密钥库测试使用）。 */
+    public static KeyPair generateKeyPair() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        return kpg.generateKeyPair();
+    }
+
+    /**
+     * 写出真实的 PKCS#12 密钥库。
+     *
+     * <p>使用 JDK 自带的 {@link java.security.KeyStore} 写入，不依赖 keytool 等外部工具。
+     *
+     * @param cert 写入的证书
+     * @param key  与证书配套的私钥
+     * @param alias 条目别名
+     * @param password 口令
+     * @return PKCS#12 字节
+     */
+    public static byte[] toPkcs12(X509Certificate cert, KeyPair key, String alias, char[] password)
+            throws Exception {
+        java.security.KeyStore ks = java.security.KeyStore.getInstance("PKCS12");
+        ks.load(null, password);
+        ks.setKeyEntry(alias, key.getPrivate(), password,
+                new java.security.cert.Certificate[]{cert});
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ks.store(out, password);
+        return out.toByteArray();
+    }
+
+    /** 将私钥导出为 PKCS#8 PEM。 */
+    public static String privateKeyToPem(java.security.PrivateKey key) throws Exception {
+        String b64 = Base64.getMimeEncoder(64, new byte[]{'\n'}).encodeToString(key.getEncoded());
+        return "-----BEGIN PRIVATE KEY-----\n" + b64 + "\n-----END PRIVATE KEY-----\n";
+    }
 }

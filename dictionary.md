@@ -132,10 +132,9 @@
 ## 12. 证书/密钥类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
-| pem | application/x-pem-file | VIEW_ONLY | PEM |
-| crt, cer | application/x-x509-ca-cert | VIEW_ONLY | 证书 |
-| key | application/x-pkcs8 | VIEW_ONLY | 私钥 |
-| p12, pfx | application/x-pkcs12 | VIEW_ONLY | PKCS12 |
+| pem, crt, cer, der | application/x-pem-file | VIEW_ONLY | X.509 证书 \[内置\] CertificateFileHandler |
+| p12, pfx | application/x-pkcs12 | VIEW_ONLY | PKCS#12 密钥库 \[内置\] 读取别名/条目/是否含私钥 |
+| key | application/x-pem-file | VIEW_ONLY | PEM 私钥 \[内置\] PKCS#8 / PKCS#1，识别 RSA/EC/DSA/Ed25519 |
 
 ## 13. 3D 文件（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
