@@ -22,7 +22,7 @@ format handlers, moving toward Phase 1's 30-format target.
 | Core data models (`Document`, `EditCapability`, `PluginHandlerInfo`) | ✅ |
 | SPI plugin framework (`FileHandler`, `FileHandlerFactory`, `FileStudioPlugin`, `PluginManager`) | ✅ |
 | Built-in text handlers: text, JSON, XML, properties, INI, CSV/TSV, Markdown, YAML, TOML, HTML, CSS | ✅ (11 handlers) |
-| Binary/metadata handlers: image, ZIP, audio, PDF, font, certificate, video, TAR, gzip, SQLite, Java class, OBJ/STL/glTF | ✅ (14 handlers) |
+| Binary/metadata handlers: image, ZIP, audio, PDF, EPUB, font, certificate, video, TAR, gzip, SQLite, Java class, OBJ/STL/glTF, ICO | ✅ (16 handlers) |
 | `DocumentParser` engine facade | ✅ |
 | `EditorEngine` (edit / undo / redo / save / modification tracking) | ✅ |
 | `HistoryManager` (undo/redo stack, bounded, coalescing) | ✅ |
@@ -37,7 +37,7 @@ format handlers, moving toward Phase 1's 30-format target.
 | `DiffEngine` (line-level LCS diff, stats, unified output) | ✅ |
 | `EditorSession` / `EditorSessionManager` (multi-tab) | ✅ |
 | `MagicBytesDetector` (content-based format sniffing) | ✅ |
-| JUnit 5 tests | ✅ (348 tests) |
+| JUnit 5 tests | ✅ (367 tests) |
 | Gradle Wrapper | ✅ |
 
 Upcoming phases: Phase 1 (Desktop MVP, Compose UI, 30+ formats), Phase 2 (80+ formats,

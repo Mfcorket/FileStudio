@@ -11,8 +11,10 @@ import com.filestudio.plugin.handlers.CsvFileHandler;
 import com.filestudio.plugin.handlers.CssFileHandler;
 import com.filestudio.plugin.handlers.HtmlFileHandler;
 import com.filestudio.plugin.handlers.ImageFileHandler;
+import com.filestudio.plugin.handlers.EpubFileHandler;
 import com.filestudio.plugin.handlers.FontFileHandler;
 import com.filestudio.plugin.handlers.GzipArchiveHandler;
+import com.filestudio.plugin.handlers.IcoFileHandler;
 import com.filestudio.plugin.handlers.IniFileHandler;
 import com.filestudio.plugin.handlers.JavaClassFileHandler;
 import com.filestudio.plugin.handlers.JsonFileHandler;
@@ -108,6 +110,8 @@ public final class FileStudioCore {
         list.add(new ObjFileHandler());
         list.add(new StlFileHandler());
         list.add(new GltfFileHandler());
+        list.add(new EpubFileHandler());
+        list.add(new IcoFileHandler());
         list.add(new TextFileHandler());
         return Collections.unmodifiableList(list);
     }

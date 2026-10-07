@@ -81,7 +81,7 @@
 | webp | image/webp | PARTIAL | WebP |
 | bmp | image/bmp | PARTIAL | BMP |
 | svg | image/svg+xml | FULL | SVG（文本可编辑） |
-| ico | image/x-icon | PARTIAL | 图标 |
+| ico, cur | image/x-icon | VIEW_ONLY | Windows 图标 \[内置\] IcoFileHandler 各尺寸与位深 |
 | heic | image/heic | PARTIAL | HEIC |
 | tiff | image/tiff | PARTIAL | TIFF |
 
@@ -109,7 +109,7 @@
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
 | pdf | application/pdf | PARTIAL | PDF |
-| epub | application/epub+zip | PARTIAL | EPUB |
+| epub | application/epub+zip | PARTIAL | EPUB 电子书 \[内置\] EpubFileHandler 书名/作者/章节数 |
 | docx | application/vnd.openxmlformats | PARTIAL | Word |
 | xlsx | application/vnd.openxmlformats | PARTIAL | Excel |
 | pptx | application/vnd.openxmlformats | PARTIAL | PowerPoint |
