@@ -139,11 +139,10 @@
 ## 13. 3D 文件（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
-| obj | model/obj | VIEW_ONLY | Wavefront OBJ |
+| obj | model/obj | VIEW_ONLY | Wavefront OBJ \[内置\] 顶点/法线/纹理/面统计、对象与材质名 |
+| stl | model/stl | VIEW_ONLY | STL \[内置\] 二进制与 ASCII 双编码、包围盒 |
+| gltf, glb | model/gltf+json | VIEW_ONLY | glTF 2.0 \[内置\] JSON 与二进制容器、asset 信息 |
 | fbx | model/fbx | VIEW_ONLY | FBX |
-| gltf | model/gltf+json | VIEW_ONLY | glTF JSON |
-| glb | model/gltf-binary | VIEW_ONLY | glTF 二进制 |
-| stl | model/stl | VIEW_ONLY | STL |
 
 ## 14. 游戏资产（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |

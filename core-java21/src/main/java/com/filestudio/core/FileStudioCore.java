@@ -16,10 +16,13 @@ import com.filestudio.plugin.handlers.GzipArchiveHandler;
 import com.filestudio.plugin.handlers.IniFileHandler;
 import com.filestudio.plugin.handlers.JavaClassFileHandler;
 import com.filestudio.plugin.handlers.JsonFileHandler;
+import com.filestudio.plugin.handlers.GltfFileHandler;
 import com.filestudio.plugin.handlers.MarkdownFileHandler;
+import com.filestudio.plugin.handlers.ObjFileHandler;
 import com.filestudio.plugin.handlers.PdfFileHandler;
 import com.filestudio.plugin.handlers.PropertiesFileHandler;
 import com.filestudio.plugin.handlers.SqliteFileHandler;
+import com.filestudio.plugin.handlers.StlFileHandler;
 import com.filestudio.plugin.handlers.TextFileHandler;
 import com.filestudio.plugin.handlers.TarArchiveHandler;
 import com.filestudio.plugin.handlers.TomlFileHandler;
@@ -102,6 +105,9 @@ public final class FileStudioCore {
         list.add(new GzipArchiveHandler());
         list.add(new SqliteFileHandler());
         list.add(new JavaClassFileHandler());
+        list.add(new ObjFileHandler());
+        list.add(new StlFileHandler());
+        list.add(new GltfFileHandler());
         list.add(new TextFileHandler());
         return Collections.unmodifiableList(list);
     }
