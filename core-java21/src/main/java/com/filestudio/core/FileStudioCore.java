@@ -10,6 +10,7 @@ import com.filestudio.plugin.handlers.CertificateFileHandler;
 import com.filestudio.plugin.handlers.CsvFileHandler;
 import com.filestudio.plugin.handlers.CssFileHandler;
 import com.filestudio.plugin.handlers.HtmlFileHandler;
+import com.filestudio.plugin.handlers.HeicFileHandler;
 import com.filestudio.plugin.handlers.ImageFileHandler;
 import com.filestudio.plugin.handlers.EpubFileHandler;
 import com.filestudio.plugin.handlers.FontFileHandler;
@@ -26,6 +27,7 @@ import com.filestudio.plugin.handlers.PropertiesFileHandler;
 import com.filestudio.plugin.handlers.SqliteFileHandler;
 import com.filestudio.plugin.handlers.StlFileHandler;
 import com.filestudio.plugin.handlers.TextFileHandler;
+import com.filestudio.plugin.handlers.TiffFileHandler;
 import com.filestudio.plugin.handlers.TarArchiveHandler;
 import com.filestudio.plugin.handlers.TomlFileHandler;
 import com.filestudio.plugin.handlers.VideoFileHandler;
@@ -112,6 +114,8 @@ public final class FileStudioCore {
         list.add(new GltfFileHandler());
         list.add(new EpubFileHandler());
         list.add(new IcoFileHandler());
+        list.add(new TiffFileHandler());
+        list.add(new HeicFileHandler());
         list.add(new TextFileHandler());
         return Collections.unmodifiableList(list);
     }

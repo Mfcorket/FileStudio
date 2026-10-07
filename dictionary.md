@@ -82,8 +82,9 @@
 | bmp | image/bmp | PARTIAL | BMP |
 | svg | image/svg+xml | FULL | SVG（文本可编辑） |
 | ico, cur | image/x-icon | VIEW_ONLY | Windows 图标 \[内置\] IcoFileHandler 各尺寸与位深 |
-| heic | image/heic | PARTIAL | HEIC |
-| tiff | image/tiff | PARTIAL | TIFF |
+| heic, heif, heix, hevc, heim, heis, hevm, hevs | image/heic | VIEW_ONLY | HEIF/HEIC \[内置\] HeicFileHandler 尺寸/品牌/编码类型 |
+| avif, avis | image/avif | VIEW_ONLY | AVIF \[内置\] 同一 ISO-BMFF 容器 |
+| tif, tiff | image/tiff | VIEW_ONLY | TIFF \[内置\] TiffFileHandler 尺寸/位深/压缩/DPI |
 
 ## 7. 音频类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
