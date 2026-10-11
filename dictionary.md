@@ -110,6 +110,7 @@
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
 | pdf | application/pdf | PARTIAL | PDF |
+| doc / xls / ppt / msi / msg | application/x-ole-storage | PARTIAL | [内置] OleFileHandler：OLE 复合文档，内部流目录、storage 树、文档类型判定 |
 | epub | application/epub+zip | PARTIAL | EPUB 电子书 \[内置\] EpubFileHandler 书名/作者/章节数 |
 | docx | application/vnd.openxmlformats | PARTIAL | Word |
 | xlsx | application/vnd.openxmlformats | PARTIAL | Excel |
