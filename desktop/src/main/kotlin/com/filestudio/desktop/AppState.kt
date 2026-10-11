@@ -3,8 +3,16 @@ package com.filestudio.desktop
 import com.filestudio.core.FileStudioCore
 import com.filestudio.core.FileStudioException
 import com.filestudio.core.PluginHandlerInfo
+import com.filestudio.engine.Bookmark
+import com.filestudio.engine.DiffEngine
 import com.filestudio.engine.EditorSession
 import com.filestudio.engine.EditorSessionManager
+import com.filestudio.engine.SearchOptions
+import com.filestudio.engine.SearchReplace
+import com.filestudio.engine.SearchReplace.SearchMatch
+import com.filestudio.engine.highlight.SyntaxHighlighter
+import com.filestudio.engine.highlight.SyntaxLanguageRegistry
+import com.filestudio.engine.highlight.Token
 import java.io.File
 
 /**
@@ -241,5 +249,279 @@ class AppState(
     fun shutdown() {
         closeAll(force = true)
         core.shutdown()
+    }
+
+    // ============================================================
+    // 以下为编辑器命令：搜索替换、语法高亮、Diff、书签
+    // 这些能力核心早已存在，这里只负责把它们接到界面上。
+    // ============================================================
+
+    // ---- 搜索与替换 ----
+
+    /** 当前搜索关键字。 */
+    var searchQuery: String = ""
+        private set
+
+    /** 当前替换文本。 */
+    var searchReplacement: String = ""
+        private set
+
+    /** 当前搜索选项（大小写敏感 / 全词 / 正则）。 */
+    var searchOptions: SearchOptions = SearchOptions.defaultOptions()
+        private set
+
+    /** 当前匹配列表，随文档内容与选项变化而重算。 */
+    var matches: List<SearchMatch> = emptyList()
+        private set
+
+    /** 当前高亮的匹配下标；-1 表示没有选中项。 */
+    var currentMatchIndex: Int = -1
+        private set
+
+    /** 设置搜索关键字并立即重新计算匹配。 */
+    fun setSearchQuery(query: String) {
+        searchQuery = query
+        refreshMatches()
+    }
+
+    /** 设置替换文本。 */
+    fun setSearchReplacement(replacement: String) {
+        searchReplacement = replacement
+    }
+
+    /** 设置搜索选项并重新计算匹配。 */
+    fun setSearchOptions(options: SearchOptions) {
+        searchOptions = options
+        refreshMatches()
+    }
+
+    /** 清空搜索状态。 */
+    fun clearSearch() {
+        searchQuery = ""
+        searchReplacement = ""
+        searchOptions = SearchOptions.defaultOptions()
+        matches = emptyList()
+        currentMatchIndex = -1
+    }
+
+    /** 选中下一个匹配；到末尾后回到开头。 */
+    fun selectNextMatch(): Boolean {
+        if (matches.isEmpty()) return false
+        currentMatchIndex = (currentMatchIndex + 1) % matches.size
+        return true
+    }
+
+    /** 选中上一个匹配；到开头后跳到末尾。 */
+    fun selectPreviousMatch(): Boolean {
+        if (matches.isEmpty()) return false
+        currentMatchIndex =
+            if (currentMatchIndex <= 0) matches.size - 1 else currentMatchIndex - 1
+        return true
+    }
+
+    /** 当前选中的匹配。 */
+    fun currentMatch(): SearchMatch? = matches.getOrNull(currentMatchIndex)
+
+    /**
+     * 替换当前选中的匹配，并重新计算匹配。
+     *
+     * @return 是否发生了替换
+     */
+    fun replaceCurrentMatch(): Boolean {
+        val match = currentMatch() ?: return false
+        val tab = activeTab ?: return false
+        if (tab.readOnly) {
+            error = "${tab.fileName} 是只读格式"
+            return false
+        }
+        if (searchQuery.isEmpty()) return false
+
+        val text = tab.content
+        if (match.start < 0 || match.end > text.length) {
+            refreshMatches()
+            return false
+        }
+        val updated = text.substring(0, match.start) + searchReplacement + text.substring(match.end)
+        if (!replaceActiveContent(updated)) return false
+
+        // 替换后同一位置可能仍是匹配，保持在相近位置而不是跳回第一个
+        refreshMatches()
+        val sameIndex = matches.indexOfFirst { it.start >= match.start }
+        currentMatchIndex = if (sameIndex >= 0) sameIndex else (matches.size - 1).coerceAtLeast(-1)
+        status = "已替换 1 处"
+        return true
+    }
+
+    /**
+     * 替换全部匹配。
+     *
+     * @return 被替换的处数
+     */
+    fun replaceAllMatches(): Int {
+        val tab = activeTab ?: return 0
+        if (tab.readOnly) {
+            error = "${tab.fileName} 是只读格式"
+            return 0
+        }
+        if (searchQuery.isEmpty() || !SearchReplace.isValidQuery(searchQuery, searchOptions)) {
+            return 0
+        }
+        val count = matches.size
+        if (count == 0) return 0
+
+        val updated = SearchReplace.replaceAll(
+            tab.content, searchQuery, searchReplacement, searchOptions
+        )
+        if (!replaceActiveContent(updated)) return 0
+        refreshMatches()
+        status = "已替换 $count 处"
+        return count
+    }
+
+    // ---- 语法高亮 ----
+
+    /** 是否启用语法高亮。 */
+    var syntaxHighlightEnabled: Boolean = true
+
+    /**
+     * 对当前文档做语法高亮。
+     *
+     * 没有匹配到语言配置时返回空列表，界面退化为纯文本显示。
+     */
+    fun highlightedTokens(): List<Token> {
+        if (!syntaxHighlightEnabled) return emptyList()
+        val tab = activeTab ?: return emptyList()
+        val highlighter = highlighterFor(tab) ?: return emptyList()
+        return highlighter.tokenize(tab.content)
+    }
+
+    /** 当前文档使用的语法配置标识；没有配置时返回 null。 */
+    fun syntaxLanguageName(): String? =
+        activeTab?.let { highlighterFor(it)?.profile?.id }
+
+    private fun highlighterFor(tab: Tab): SyntaxHighlighter? =
+        SyntaxLanguageRegistry.forPath(tab.path)
+
+    // ---- Diff ----
+
+    /**
+     * 与磁盘上的当前文件比较，展示「已保存 vs 已修改」的差异。
+     *
+     * @return 差异结果；文件不存在或不可读时返回 null
+     */
+    fun diffWithDisk(): DiffEngine.DiffResult? {
+        val tab = activeTab ?: return null
+        val file = File(tab.path)
+        if (!file.isFile) {
+            error = "文件已不在磁盘上：${tab.fileName}"
+            return null
+        }
+        return try {
+            DiffEngine.diff(file.readText(), tab.content)
+        } catch (e: java.io.IOException) {
+            error = "读取磁盘文件失败：${e.message}"
+            null
+        }
+    }
+
+    /**
+     * 与任意文本比较。
+     */
+    fun diffWith(other: String): DiffEngine.DiffResult? {
+        val tab = activeTab ?: return null
+        return DiffEngine.diff(other, tab.content)
+    }
+
+    // ---- 书签 ----
+
+    /** 当前文档的书签列表。 */
+    fun bookmarks(): List<Bookmark> =
+        activeTab?.session?.bookmarks?.list() ?: emptyList()
+
+    /** 某一行是否已有书签。 */
+    fun hasBookmark(line: Int): Boolean =
+        activeTab?.session?.bookmarks?.has(line) ?: false
+
+    /**
+     * 在指定行切换书签。
+     *
+     * @param line 从 0 开始的行号
+     * @return 操作后该行是否有书签
+     */
+    fun toggleBookmark(line: Int, label: String = ""): Boolean {
+        val tab = activeTab ?: return false
+        val bookmarks = tab.session.bookmarks
+        val nowPresent = if (bookmarks.has(line)) {
+            bookmarks.remove(line)
+            false
+        } else {
+            bookmarks.add(line, label)
+            true
+        }
+        status = if (nowPresent) "已在第 ${line + 1} 行添加书签" else "已移除第 ${line + 1} 行书签"
+        return nowPresent
+    }
+
+    // ---- 视图开关 ----
+
+    /** 是否显示右侧详情面板。 */
+    var showDetailsPanel: Boolean = true
+
+    /** 是否显示搜索替换面板。 */
+    var showSearchPanel: Boolean = false
+
+    /** 是否显示 Diff 面板。 */
+    var showDiffPanel: Boolean = false
+
+    /** 是否显示行号。 */
+    var showLineNumbers: Boolean = true
+
+    /** 光标所在行（从 0 开始）。 */
+    var cursorLine: Int = 0
+
+    /**
+     * 把光标移到指定行，超出范围时收敛到有效区间。
+     */
+    fun moveCursorToLine(line: Int) {
+        val lines = activeTab?.session?.lineIndex()?.lineCount() ?: return
+        cursorLine = line.coerceIn(0, (lines - 1).coerceAtLeast(0))
+    }
+
+    /**
+     * 根据文本偏移量更新光标行。
+     */
+    fun moveCursorToOffset(offset: Int) {
+        val index = activeTab?.session?.lineIndex() ?: return
+        cursorLine = index.lineOf(offset.coerceAtLeast(0)).coerceAtLeast(0)
+    }
+
+    /** 切换 Diff 面板时同步刷新搜索结果，避免替换后统计过期。 */
+    fun toggleDiffPanel() {
+        showDiffPanel = !showDiffPanel
+        if (showDiffPanel) {
+            refreshMatches()
+        }
+    }
+
+    /** 根据当前文档重新计算搜索匹配。 */
+    private fun refreshMatches() {
+        val tab = activeTab
+        if (tab == null || searchQuery.isEmpty()) {
+            matches = emptyList()
+            currentMatchIndex = -1
+            return
+        }
+        if (!SearchReplace.isValidQuery(searchQuery, searchOptions)) {
+            matches = emptyList()
+            currentMatchIndex = -1
+            return
+        }
+        matches = try {
+            SearchReplace.findMatches(tab.content, searchQuery, searchOptions)
+        } catch (e: RuntimeException) {
+            // 正则表达式非法时不能让界面崩掉
+            emptyList()
+        }
+        currentMatchIndex = if (matches.isEmpty()) -1 else 0
     }
 }

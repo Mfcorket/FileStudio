@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -97,10 +98,42 @@ class MagicBytesDetectorTest {
 
     @Test
     void unknownReturnsUnknown() {
-        byte[] unknown = {'x', 'y', 'z', 'q', 'w', 'e', 'r', 't', 'y', 'u'};
+        // 真正无法判定的二进制内容：含 NUL 与高位字节
+        byte[] unknown = {0x00, 0x01, (byte) 0x8B, 0x7F, 0x00, (byte) 0xC0, 0x10, 0x20};
         var d = MagicBytesDetector.detect(unknown, unknown.length);
         assertFalse(d.isKnown());
         assertEquals("", d.extension());
+    }
+
+    @Test
+    void plainAsciiIsDetectedAsText() {
+        // 没有 BOM 的纯文本源码也必须能打开，否则 .java/.py/.js 等会被判为无处理器
+        byte[] source = "public class Main { }".getBytes(StandardCharsets.UTF_8);
+        var d = MagicBytesDetector.detect(source, source.length);
+        assertTrue(d.isKnown());
+        assertEquals("txt", d.extension());
+        assertEquals("text/plain", d.mimeType());
+        // 置信度刻意压低，避免盖过具体格式
+        assertTrue(d.confidence() < 0.5, "兜底文本检测的置信度应低于具体格式，实际=" + d.confidence());
+    }
+
+    @Test
+    void sourceFilesWithoutBomAreDetectedAsText() {
+        // 无 BOM 的源码必须能识别；其中带明确标记的仍应命中更具体的格式
+        String[][] cases = {
+                {"def f():\n    return 1\n", "txt"},
+                {"function f() { return 1 }", "txt"},
+                {"package main", "txt"},
+                {"<html><body>hi</body></html>", "html"},
+                {"<?xml version=\"1.0\"?><a/>", "xml"},
+                {"{\"k\":1}", "json"},
+                {"#!/bin/sh\necho hi", "sh"},
+        };
+        for (String[] c : cases) {
+            byte[] b = c[0].getBytes(StandardCharsets.UTF_8);
+            assertEquals(c[1], MagicBytesDetector.detect(b, b.length).extension(),
+                    "识别错误的内容：" + c[0]);
+        }
     }
 
     @Test

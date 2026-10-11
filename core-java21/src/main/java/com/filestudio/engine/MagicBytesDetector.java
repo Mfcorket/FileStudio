@@ -141,17 +141,25 @@ public final class MagicBytesDetector {
         if (t.startsWith("{") || t.startsWith("[")) {
             return new Detection("json", "application/json", 0.6);
         }
+        // HTML 必须排在通用 '<' 之前，否则 <html... 会被先判成 XML，
+        // 下面的 html 分支就成了永远走不到的死代码
+        if (t.startsWith("<html") || t.startsWith("<!DOCTYPE html")
+                || t.startsWith("<!doctype html")) {
+            return new Detection("html", "text/html", 0.7);
+        }
         if (t.startsWith("<?xml") || t.startsWith("<")) {
             return new Detection("xml", "application/xml", 0.5);
-        }
-        if (t.startsWith("<html") || t.startsWith("<!DOCTYPE html")) {
-            return new Detection("html", "text/html", 0.7);
         }
         if (t.startsWith("#!")) {
             return new Detection("sh", "application/x-sh", 0.8);
         }
 
-        return Detection.UNKNOWN;
+        // 兜底：decodeAsciiPrefix 已经保证这里全是可打印 ASCII 且没有 NUL，
+        // 因此可以安全地判定为纯文本。缺了这一步，.java / .py / .js / .go
+        // 等源码文件（绝大多数不带 BOM）会落到 UNKNOWN，进而在
+        // DocumentParser 里报「No handler for file」。
+        // 置信度刻意压低：真正的具体格式已经在上面判完，这里只是兜底。
+        return new Detection("txt", "text/plain", 0.3);
     }
 
     /** 参与签名的头部字节数。足够覆盖所有签名的最长前缀。 */

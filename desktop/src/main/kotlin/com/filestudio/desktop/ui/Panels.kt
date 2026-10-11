@@ -2,7 +2,6 @@ package com.filestudio.desktop.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,7 +35,7 @@ import com.filestudio.core.PluginHandlerInfo
 import com.filestudio.desktop.Tab
 
 /**
- * 左侧栏：已打开的标签页 + 处理器清单。
+ * 左侧栏：已打开的标签页 + 已注册处理器清单。
  */
 @Composable
 fun Sidebar(
@@ -71,16 +71,14 @@ fun Sidebar(
             }
 
             HorizontalDivider()
-
             SectionTitle("已注册处理器 (${handlers.size})")
+
             Column(
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
             ) {
-                handlers.forEach { info ->
-                    HandlerRow(info)
-                }
+                handlers.forEach { info -> HandlerRow(info) }
             }
         }
     }
@@ -215,9 +213,7 @@ private fun KeyValue(key: String, value: String) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 3.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(Modifier.padding(8.dp)) {
             Text(
@@ -238,27 +234,23 @@ private fun KeyValue(key: String, value: String) {
 /**
  * 把元数据值转成一行可读文本。
  *
- * 集合与数组会展开成逗号分隔的短列表，避免一屏塞进一整段 JSON。
+ * 集合与映射会展开成分隔的短列表并截断，避免一屏塞进一整段 JSON。
  */
 fun formatValue(value: Any?): String = when (value) {
     null -> "—"
     is String -> value.ifBlank { "—" }
     is Boolean -> if (value) "是" else "否"
-    is Collection<*> -> {
-        if (value.isEmpty()) {
-            "（空）"
-        } else {
-            value.take(12).joinToString(", ") { formatValue(it) } +
-                if (value.size > 12) " …共 ${value.size} 项" else ""
-        }
+    is Collection<*> -> if (value.isEmpty()) {
+        "（空）"
+    } else {
+        value.take(12).joinToString(", ") { formatValue(it) } +
+            if (value.size > 12) " …共 ${value.size} 项" else ""
     }
-    is Map<*, *> -> {
-        if (value.isEmpty()) {
-            "（空）"
-        } else {
-            value.entries.take(12).joinToString("; ") { "${it.key}=${formatValue(it.value)}" } +
-                if (value.size > 12) " …共 ${value.size} 项" else ""
-        }
+    is Map<*, *> -> if (value.isEmpty()) {
+        "（空）"
+    } else {
+        value.entries.take(12).joinToString("; ") { "${it.key}=${formatValue(it.value)}" } +
+            if (value.size > 12) " …共 ${value.size} 项" else ""
     }
     else -> value.toString()
 }
@@ -297,22 +289,6 @@ fun StatusBar(
             Text(
                 "$tabCount 标签 · $handlerCount 处理器",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-/** 空状态占位。 */
-@Composable
-fun EmptyState(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("FileStudio", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "用「文件 → 打开」选择一个文件，或从命令行传入路径",
-                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

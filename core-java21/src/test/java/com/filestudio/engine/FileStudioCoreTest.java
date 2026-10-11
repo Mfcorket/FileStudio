@@ -195,9 +195,21 @@ class FileStudioCoreTest {
 
     @Test
     void parseUnsupportedFormatThrows(@TempDir Path dir) throws IOException {
+        // 真正的二进制内容才应该「无处理器」；纯文本会被文本兜底接管
         Path f = dir.resolve("unknown.xyz");
-        Files.writeString(f, "data", StandardCharsets.UTF_8);
+        Files.write(f, new byte[]{0x00, 0x01, (byte) 0x8B, 0x7F, 0x00, (byte) 0xC3});
         assertThrows(FileStudioException.class, () -> core.parseFile(f.toString()));
+    }
+
+    @Test
+    void parsesSourceFileWithoutBom(@TempDir Path dir) throws IOException {
+        // 回归测试：没有 BOM 的源码文件曾经因为判不出格式而无法打开，
+        // 导致 SyntaxLanguageRegistry 里的语言配置形同虚设
+        Path f = dir.resolve("Main.java");
+        Files.writeString(f, "public class Main { }", StandardCharsets.UTF_8);
+        Document doc = core.parseFile(f.toString());
+        assertEquals(EditCapability.FULL, doc.getEditCapability());
+        assertTrue(doc.getContent().contains("public class"));
     }
 
     @Test
