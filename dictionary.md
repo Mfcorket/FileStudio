@@ -67,6 +67,7 @@
 |--------|------|------|------|
 | zip | application/zip | PARTIAL | ZIP |
 | 7z | application/x-7z-compressed | PARTIAL | 7-Zip \[内置\] SevenZipFileHandler 条目名/大小/目录 |
+| rar | application/vnd.rar | PARTIAL | [内置] RarFileHandler：RAR4 与 RAR5 条目、压缩方法、加密/固实标记、时间戳 |
 | tar | application/x-tar | PARTIAL | tar \[内置\] TarArchiveHandler |
 | gz, gzip, tgz | application/gzip | PARTIAL | gzip \[内置\] GzipArchiveHandler |
 | rar | application/vnd.rar | PARTIAL | RAR |

@@ -36,6 +36,7 @@ import com.filestudio.plugin.handlers.ApkFileHandler;
 import com.filestudio.plugin.handlers.ExecutableFileHandler;
 import com.filestudio.plugin.handlers.ParquetFileHandler;
 import com.filestudio.plugin.handlers.OleFileHandler;
+import com.filestudio.plugin.handlers.RarFileHandler;
 import com.filestudio.plugin.handlers.XmlFileHandler;
 import com.filestudio.plugin.handlers.YamlFileHandler;
 import com.filestudio.plugin.handlers.ZipArchiveHandler;
@@ -117,6 +118,7 @@ public final class FileStudioCore {
         list.add(new ExecutableFileHandler());
         list.add(new ParquetFileHandler());
         list.add(new OleFileHandler());
+        list.add(new RarFileHandler());
         list.add(new SqliteFileHandler());
         list.add(new JavaClassFileHandler());
         list.add(new ObjFileHandler());
