@@ -60,6 +60,8 @@ fun FileStudioApp(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         ShortcutHandler(dispatcher = dispatcher) {
+            SettingsDialog(state = state, onDismiss = { state.showSettingsDialog = false })
+            AboutDialog(dispatcher)
             Column(Modifier.fillMaxSize().padding(padding)) {
                 if (state.showSearchPanel) {
                     SearchPanel(state)

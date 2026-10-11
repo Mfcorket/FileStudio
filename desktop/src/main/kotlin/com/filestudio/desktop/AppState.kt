@@ -48,9 +48,18 @@ data class Tab(
  */
 class AppState(
     private val core: FileStudioCore = FileStudioCore(),
+    /** 默认不落盘，测试因此不会读到开发者本机的配置。 */
+    private val store: SettingsStore = SettingsStore.inMemory(),
 ) {
     private val _tabs = mutableListOf<Tab>()
     private var _active = -1
+
+    /**
+     * 用户配置。所有视图开关都从这里派生，避免出现「状态一份、设置一份」
+     * 两个真相来源而慢慢漂移。
+     */
+    var settings: Settings = store.load()
+        private set
 
     /** 最近一条状态消息，显示在底部状态栏。 */
     var status: String = "就绪"
@@ -101,6 +110,7 @@ class AppState(
             val session = core.newSessionManager().open(file)
             _tabs.add(Tab(session.key, session.fileName, path, session))
             _active = _tabs.size - 1
+            updateSettings { it.withRecentFile(path) }
             error = null
             status = "已打开 ${session.fileName}（${_tabs.size} 个标签页）"
             true
@@ -383,8 +393,10 @@ class AppState(
 
     // ---- 语法高亮 ----
 
-    /** 是否启用语法高亮。 */
-    var syntaxHighlightEnabled: Boolean = true
+    /** 是否启用语法高亮（由配置驱动）。 */
+    var syntaxHighlightEnabled: Boolean
+        get() = settings.syntaxHighlight
+        set(value) = updateSettings { it.copy(syntaxHighlight = value) }
 
     /**
      * 对当前文档做语法高亮。
@@ -467,23 +479,69 @@ class AppState(
 
     // ---- 视图开关 ----
 
-    /** 是否显示右侧详情面板。 */
-    var showDetailsPanel: Boolean = true
+    /** 是否显示右侧详情面板（由配置驱动）。 */
+    var showDetailsPanel: Boolean
+        get() = settings.showDetailsPanel
+        set(value) = updateSettings { it.copy(showDetailsPanel = value) }
 
-    /** 是否显示搜索替换面板。 */
+    /** 是否显示搜索替换面板（会话级，不持久化）。 */
     var showSearchPanel: Boolean = false
 
-    /** 是否显示 Diff 面板。 */
+    /** 是否显示 Diff 面板（会话级，不持久化）。 */
     var showDiffPanel: Boolean = false
 
-    /** 是否显示行号。 */
-    var showLineNumbers: Boolean = true
+    /** 是否显示行号（由配置驱动）。 */
+    var showLineNumbers: Boolean
+        get() = settings.showLineNumbers
+        set(value) = updateSettings { it.copy(showLineNumbers = value) }
 
     /** 是否弹出「打开文件」对话框。 */
     var showOpenDialog: Boolean = false
 
+    /** 是否显示设置对话框。 */
+    var showSettingsDialog: Boolean = false
+
     /** 需要把焦点移到哪个输入框。 */
     var pendingFocus: SearchFocusTarget? = null
+
+    /**
+     * 设置状态栏消息。
+     *
+     * 供界面在无法直接执行某个动作时给出明确说明，
+     * 而不是让菜单点击后毫无反应。
+     */
+    fun setStatus(message: String) {
+        status = message
+    }
+
+    /**
+     * 修改配置并立即落盘。
+     *
+     * @param transform 对现有配置的变换
+     */
+    fun updateSettings(transform: (Settings) -> Settings) {
+        settings = transform(settings).sanitized()
+        store.save(settings)
+    }
+
+    /** 恢复到默认配置。 */
+    fun resetSettings() {
+        settings = Settings.DEFAULT
+        store.save(settings)
+    }
+
+    /** 最近打开过的文件。 */
+    val recentFiles: List<String> get() = settings.recentFiles
+
+    /**
+     * 配置文件位置提示，供设置面板显示。
+     */
+    fun settingsPathHint(): String = store.file.toString()
+
+    /**
+     * 清空最近文件列表。
+     */
+    fun clearRecentFiles() = updateSettings { it.copy(recentFiles = emptyList()) }
 
     /** 光标所在行（从 0 开始）。 */
     var cursorLine: Int = 0

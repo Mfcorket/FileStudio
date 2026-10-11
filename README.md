@@ -43,7 +43,9 @@ usable front end.
 | Compose UI: menu bar, tab sidebar, editor pane, metadata panel, status bar | ✅ |
 | Editor commands wired: undo/redo, search & replace, Diff, syntax highlight, bookmarks | ✅ |
 | Keyboard shortcuts (`Keymap` + `ShortcutDispatcher` + F1 help dialog) | ✅ |
-| JUnit 5 tests | ✅ (463 core + 66 desktop) |
+| Top menu bar (文件 / 编辑 / 视图 / 工具 / 插件 / 帮助) | ✅ |
+| User settings (`Settings` + `SettingsStore`, hand-editable JSON) | ✅ |
+| JUnit 5 tests | ✅ (463 core + 93 desktop) |
 | Gradle Wrapper | ✅ |
 
 Upcoming phases: Phase 1 (Desktop MVP, Compose UI, 30+ formats), Phase 2 (80+ formats,
@@ -145,6 +147,53 @@ Shortcuts are defined in `desktop/src/main/kotlin/com/filestudio/desktop/Shortcu
 as data, and applied in `ShortcutDispatcher.kt`. Both are plain Kotlin with no
 Compose rendering, so the binding table and every action's effect are covered by
 headless unit tests — including a check that no two actions claim the same key.
+
+### Top menu bar
+
+| Menu | Contents |
+|---|---|
+| 文件 | open, save, recent files, close tab, close all, quit |
+| 编辑 | undo, redo, find, find & replace, next/previous match, replace all, bookmark |
+| 视图 | syntax highlight, line numbers, word wrap, details panel, font size, panels |
+| 工具 | Diff against disk, settings |
+| 插件 | registered format handlers (extension / description / capability) |
+| 帮助 | shortcut reference, about |
+
+Menu items and keyboard shortcuts both route through `ShortcutDispatcher`, so
+"click Save" and "press Ctrl+S" cannot drift apart.
+
+### User settings
+
+Settings are stored as a hand-editable JSON file:
+
+| Platform | Path |
+|---|---|
+| Windows | `%APPDATA%\FileStudio\settings.json` |
+| macOS | `~/Library/Application Support/FileStudio/settings.json` |
+| Linux | `$XDG_CONFIG_HOME/FileStudio/settings.json` (else `~/.config/...`) |
+
+```json
+{
+  "theme": "LIGHT",
+  "fontSizeSp": 13,
+  "showLineNumbers": true,
+  "syntaxHighlight": true,
+  "wrapLines": false,
+  "showDetailsPanel": true,
+  "tabWidth": 4,
+  "windowWidth": 1280,
+  "windowHeight": 820,
+  "recentFiles": ["A:\\path\\to\\file.txt"]
+}
+```
+
+Configure them from **工具 → 设置…**. Changes apply immediately — there is no
+apply/cancel, so what you see is always what is stored.
+
+The file is designed to be tolerant of hand-editing: unknown fields are ignored,
+missing or invalid values fall back to defaults per-field, out-of-range numbers
+are clamped, and a completely unparseable file degrades to defaults rather than
+preventing startup.
 
 Requirements: a JDK 17+ to run Gradle; the build uses the Gradle JVM toolchain to compile
 with Java 21 (auto-resolved via the foojay resolver plugin if not installed locally).

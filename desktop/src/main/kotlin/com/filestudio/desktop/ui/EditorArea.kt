@@ -82,6 +82,7 @@ fun EditorArea(
     var value by remember(tab.key) { mutableStateOf(TextFieldValue(tab.content)) }
     val tokens = state.highlightedTokens()
     val language = state.syntaxLanguageName()
+    val fontSize = state.settings.fontSizeSp.sp
 
     Column(modifier.fillMaxSize()) {
         EditorHeader(tab, language, state.bookmarks().size)
@@ -91,6 +92,7 @@ fun EditorArea(
                     lines = state.activeTab?.session?.lineIndex()?.lineCount() ?: 0,
                     currentLine = state.cursorLine,
                     bookmarked = state.bookmarks().map { it.line() }.toSet(),
+                    fontSize = fontSize,
                 )
             }
             BasicTextField(
@@ -109,7 +111,7 @@ fun EditorArea(
                     .padding(8.dp),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
+                    fontSize = fontSize,
                 ),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(
                     MaterialTheme.colorScheme.primary
@@ -164,7 +166,12 @@ private fun ReadOnlyBanner(tab: Tab) {
 
 /** 行号栏，标记当前行与书签行。 */
 @Composable
-private fun Gutter(lines: Int, currentLine: Int, bookmarked: Set<Int>) {
+private fun Gutter(
+    lines: Int,
+    currentLine: Int,
+    bookmarked: Set<Int>,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+) {
     Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(
             Modifier
@@ -183,6 +190,7 @@ private fun Gutter(lines: Int, currentLine: Int, bookmarked: Set<Int>) {
                     text = (if (i in bookmarked) "◆" else " ") + (i + 1).toString().padStart(4),
                     style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
+                    fontSize = fontSize,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.background(bg).padding(end = 6.dp),
                 )

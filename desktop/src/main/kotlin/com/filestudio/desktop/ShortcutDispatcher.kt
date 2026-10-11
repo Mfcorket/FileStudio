@@ -157,6 +157,9 @@ class ShortcutDispatcher(
     /** 是否显示快捷键帮助面板。 */
     var showHelp: Boolean = false
 
+    /** 是否显示关于对话框。 */
+    var showAbout: Boolean = false
+
     /** 根据按键事件解析动作并执行。 */
     fun handle(shortcut: Shortcut): ShortcutResult {
         val action = Keymap.actionFor(shortcut) ?: return ShortcutResult.NotHandled

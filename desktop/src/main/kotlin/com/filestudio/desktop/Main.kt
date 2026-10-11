@@ -24,15 +24,26 @@ import com.filestudio.desktop.ui.FileStudioApp
  */
 fun main(args: Array<String>) {
     val initialPaths = args.filter { it.isNotBlank() && !it.startsWith("-") }
-    val dark = darkThemeRequested()
+
+    // 启动时先读一次配置，用于决定窗口尺寸与主题
+    val store = SettingsStore(SettingsStore.defaultPath())
+    val settings = store.load()
 
     application {
         Window(
             onCloseRequest = ::exitApplication,
             title = "FileStudio",
-            state = rememberWindowState(size = DpSize(1280.dp, 820.dp)),
+            state = rememberWindowState(
+                size = DpSize(settings.windowWidth.dp, settings.windowHeight.dp)
+            ),
         ) {
-            AppRoot(initialPaths = initialPaths, darkTheme = dark)
+            // exitApplication 只在 application { } 的作用域内可见，
+            // 必须在这里取出来传给 AppRoot
+            AppRoot(
+                initialPaths = initialPaths,
+                store = store,
+                onExit = ::exitApplication,
+            )
         }
     }
 }
@@ -40,19 +51,24 @@ fun main(args: Array<String>) {
 /**
  * 应用根节点。
  *
- * 抽出这一层是为了让启动参数与主题可以脱离窗口单独构建与验证。
+ * 抽出这一层是为了让启动参数、主题与配置可以脱离窗口单独构建与验证。
  */
 @Composable
 fun AppRoot(
     initialPaths: List<String> = emptyList(),
-    darkTheme: Boolean = false,
+    store: SettingsStore = SettingsStore(SettingsStore.defaultPath()),
     onExit: () -> Unit = {},
 ) {
     // remember：重组时不会丢掉已打开的标签页
-    val state = remember { AppState() }
+    val state = remember { AppState(store = store) }
     remember { initialPaths.forEach { state.openPathArg(it) } }
 
-    MaterialTheme(colorScheme = if (darkTheme) darkColorScheme() else lightColorScheme()) {
+    val colors = when (state.settings.theme) {
+        ThemeMode.DARK -> darkColorScheme()
+        ThemeMode.LIGHT, ThemeMode.SYSTEM -> lightColorScheme()
+    }
+
+    MaterialTheme(colorScheme = colors) {
         val dispatcher = remember { ShortcutDispatcher(state, onExit) }
         FileStudioApp(
             state = state,
@@ -61,7 +77,3 @@ fun AppRoot(
         )
     }
 }
-
-/** 读取主题偏好；默认浅色，仅显式指定时才切深色。 */
-private fun darkThemeRequested(): Boolean =
-    System.getProperty("filestudio.theme", "").equals("dark", ignoreCase = true)
