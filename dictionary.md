@@ -162,6 +162,7 @@
 |--------|------|------|------|
 | class | application/java-vm | VIEW_ONLY | Java 字节码 \[内置\] JavaClassFileHandler（编译版本/类名/修饰符） |
 | exe / dll / sys / so / elf / dylib | application/x-msdownload | VIEW_ONLY | [内置] ExecutableFileHandler：PE 与 ELF 头、架构、子系统、入口点、节表、ASLR/DEP、DT_NEEDED |
+| parquet | application/vnd.apache.parquet | PARTIAL | [内置] ParquetFileHandler：尾部 FileMetaData、Schema、行数、createdBy、压缩方式（Thrift Compact 解码） |
 
 ## 17. 自定义/示例
 | 扩展名 | MIME | 编辑 | 说明 |
