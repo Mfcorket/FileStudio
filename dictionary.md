@@ -155,9 +155,7 @@
 ## 15. 移动应用（PARTIAL）
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
-| apk | application/vnd.android.package-archive | PARTIAL | Android 包 |
-| aab | application/vnd.android.package-bundle | PARTIAL | Android App Bundle |
-| ipa | application/octet-stream | PARTIAL | iOS 包 |
+| apk / aab / ipa / xapk / apks | application/vnd.android.package-archive | PARTIAL | [内置] ApkFileHandler：包结构、dex、原生库 ABI、v1/v2/v3 签名 |
 
 ## 16. 字节码 / 可执行文件（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
