@@ -25,28 +25,37 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.filestudio.core.PluginHandlerInfo
 import com.filestudio.desktop.AppState
+import com.filestudio.desktop.Keymap
+import com.filestudio.desktop.SearchFocusTarget
+import com.filestudio.desktop.ShortcutAction
+import com.filestudio.desktop.ShortcutDispatcher
 import com.filestudio.engine.SearchOptions
 
 /**
  * 顶部的文件 / 编辑 / 视图 / 插件四个菜单。
  *
- * 菜单项直接调用 [AppState] 上的编辑器命令——核心里的撤销、搜索替换、
- * Diff、书签能力原本就存在，这里只是把它们接到界面上。
+ * 菜单项与快捷键共用 [ShortcutDispatcher]，因此「点保存」和「按 Ctrl+S」
+ * 走的是同一条代码路径，不会出现两者行为不一致的情况。
+ * 每个菜单项右侧显示对应快捷键。
  */
 @Composable
 fun MenuBar(
     state: AppState,
+    dispatcher: ShortcutDispatcher,
     modifier: Modifier = Modifier,
 ) {
     var menu by remember { mutableStateOf<String?>(null) }
@@ -68,98 +77,81 @@ fun MenuBar(
     }
 
     DropdownMenu(expanded = menu == "文件", onDismissRequest = { menu = null }) {
-        var pathInput by remember { mutableStateOf("") }
-        OutlinedTextField(
-            value = pathInput,
-            onValueChange = { pathInput = it },
-            label = { Text("文件路径") },
-            singleLine = true,
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .fillMaxWidth(),
-        )
-        DropdownMenuItem(
-            text = { Text("打开") },
-            enabled = pathInput.isNotBlank(),
-            onClick = {
-                state.openPathArg(pathInput.trim())
-                pathInput = ""
-                menu = null
-            },
-        )
+        MenuAction(ShortcutAction.OPEN, "打开…") { dispatcher.requestOpenDialog() }
+        MenuAction(ShortcutAction.SAVE, "保存") {
+            dispatcher.dispatch(ShortcutAction.SAVE)
+        }.also { }
+        MenuAction(ShortcutAction.CLOSE_TAB, "关闭当前标签") {
+            dispatcher.dispatch(ShortcutAction.CLOSE_TAB)
+        }
+        MenuAction(ShortcutAction.CLOSE_ALL, "关闭全部标签") {
+            dispatcher.dispatch(ShortcutAction.CLOSE_ALL)
+        }
         HorizontalDivider()
-        DropdownMenuItem(
-            text = { Text("保存") },
-            enabled = state.activeTab != null && !state.activeTab!!.readOnly,
-            onClick = {
-                state.saveActive()
-                menu = null
-            },
-        )
-        DropdownMenuItem(
-            text = { Text("关闭当前标签") },
-            enabled = state.activeTab != null,
-            onClick = {
-                val idx = state.activeIndex
-                if (idx >= 0) state.closeTab(idx)
-                menu = null
-            },
-        )
+        MenuAction(ShortcutAction.QUIT, "退出") { dispatcher.dispatch(ShortcutAction.QUIT) }
     }
 
     DropdownMenu(expanded = menu == "编辑", onDismissRequest = { menu = null }) {
         val tab = state.activeTab
-        DropdownMenuItem(
-            text = { Text("撤销") },
-            enabled = tab != null && tab.modified,
-            onClick = {
-                state.undo()
-                menu = null
-            },
-        )
-        DropdownMenuItem(
-            text = { Text("重做") },
-            enabled = tab != null && tab.modified,
-            onClick = {
-                state.redo()
-                menu = null
-            },
-        )
+        MenuAction(ShortcutAction.UNDO, "撤销", enabled = tab != null && tab.modified) {
+            dispatcher.dispatch(ShortcutAction.UNDO)
+        }
+        MenuAction(ShortcutAction.REDO, "重做", enabled = tab != null && tab.modified) {
+            dispatcher.dispatch(ShortcutAction.REDO)
+        }
         HorizontalDivider()
-        DropdownMenuItem(
-            text = { Text("查找与替换…") },
-            enabled = tab != null,
-            onClick = {
-                state.showSearchPanel = !state.showSearchPanel
-                menu = null
-            },
-        )
-        DropdownMenuItem(
-            text = { Text("与磁盘比较（Diff）") },
-            enabled = tab != null,
-            onClick = {
-                state.toggleDiffPanel()
-                menu = null
-            },
-        )
+        MenuAction(ShortcutAction.FIND, "查找", enabled = tab != null) {
+            dispatcher.dispatch(ShortcutAction.FIND)
+        }
+        MenuAction(ShortcutAction.FIND_REPLACE, "查找并替换", enabled = tab != null) {
+            dispatcher.dispatch(ShortcutAction.FIND_REPLACE)
+        }
+        MenuAction(ShortcutAction.REPLACE_ALL, "全部替换",
+            enabled = tab != null && state.matches.isNotEmpty()) {
+            dispatcher.dispatch(ShortcutAction.REPLACE_ALL)
+        }
         HorizontalDivider()
-        DropdownMenuItem(
-            text = { Text("在当前行切换书签") },
-            enabled = tab != null,
-            onClick = {
-                state.toggleBookmark(state.cursorLine, "标记")
-                menu = null
-            },
-        )
+        MenuAction(ShortcutAction.TOGGLE_DIFF_PANEL, "与磁盘比较（Diff）",
+            enabled = tab != null) {
+            dispatcher.dispatch(ShortcutAction.TOGGLE_DIFF_PANEL)
+        }
+        MenuAction(ShortcutAction.TOGGLE_BOOKMARK, "切换书签", enabled = tab != null) {
+            dispatcher.dispatch(ShortcutAction.TOGGLE_BOOKMARK)
+        }
     }
 
     DropdownMenu(expanded = menu == "视图", onDismissRequest = { menu = null }) {
-        ToggleItem("语法高亮", state.syntaxHighlightEnabled) {
-            state.syntaxHighlightEnabled = it
+        MenuAction(ShortcutAction.TOGGLE_SYNTAX_HIGHLIGHT,
+            if (state.syntaxHighlightEnabled) "语法高亮 ✓" else "语法高亮") {
+            dispatcher.dispatch(ShortcutAction.TOGGLE_SYNTAX_HIGHLIGHT)
         }
-        ToggleItem("行号", state.showLineNumbers) { state.showLineNumbers = it }
-        ToggleItem("详情面板", state.showDetailsPanel) { state.showDetailsPanel = it }
-        ToggleItem("查找替换面板", state.showSearchPanel) { state.showSearchPanel = it }
+        MenuAction(ShortcutAction.TOGGLE_LINE_NUMBERS,
+            if (state.showLineNumbers) "行号 ✓" else "行号") {
+            dispatcher.dispatch(ShortcutAction.TOGGLE_LINE_NUMBERS)
+        }
+        MenuAction(ShortcutAction.TOGGLE_DETAILS_PANEL,
+            if (state.showDetailsPanel) "详情面板 ✓" else "详情面板") {
+            dispatcher.dispatch(ShortcutAction.TOGGLE_DETAILS_PANEL)
+        }
+        MenuAction(ShortcutAction.TOGGLE_SEARCH_PANEL,
+            if (state.showSearchPanel) "查找替换面板 ✓" else "查找替换面板") {
+            dispatcher.dispatch(ShortcutAction.TOGGLE_SEARCH_PANEL)
+        }
+        MenuAction(ShortcutAction.TOGGLE_DIFF_PANEL,
+            if (state.showDiffPanel) "Diff 面板 ✓" else "Diff 面板") {
+            dispatcher.dispatch(ShortcutAction.TOGGLE_DIFF_PANEL)
+        }
+        HorizontalDivider()
+        MenuAction(ShortcutAction.NEXT_TAB, "下一个标签") {
+            dispatcher.dispatch(ShortcutAction.NEXT_TAB)
+        }
+        MenuAction(ShortcutAction.PREVIOUS_TAB, "上一个标签") {
+            dispatcher.dispatch(ShortcutAction.PREVIOUS_TAB)
+        }
+        HorizontalDivider()
+        MenuAction(ShortcutAction.SHOW_HELP, "键盘快捷键") {
+            dispatcher.dispatch(ShortcutAction.SHOW_HELP)
+        }
     }
 
     DropdownMenu(expanded = menu == "插件", onDismissRequest = { menu = null }) {
@@ -179,6 +171,30 @@ fun MenuBar(
             )
         }
     }
+}
+
+/**
+ * 带快捷键提示的菜单项。
+ */
+@Composable
+private fun MenuAction(
+    action: ShortcutAction,
+    label: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        trailingIcon = {
+            Text(
+                Keymap.allLabels(action),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        enabled = enabled,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -235,9 +251,25 @@ private fun HandlerMenuRow(info: PluginHandlerInfo) {
 
 /**
  * 查找与替换面板。
+ *
+ * 通过 [AppState.pendingFocus] 接收焦点请求：按下 Ctrl+F 时面板可能刚刚
+ * 才被展开，此时直接 requestFocus 会打在不存在的节点上，因此把请求记在
+ * 状态里，等本组件重组后再兑现。
  */
 @Composable
 fun SearchPanel(state: AppState, modifier: Modifier = Modifier) {
+    val queryFocus = remember { FocusRequester() }
+    val replacementFocus = remember { FocusRequester() }
+
+    LaunchedEffect(state.pendingFocus) {
+        when (state.pendingFocus) {
+            SearchFocusTarget.QUERY -> queryFocus.requestFocus()
+            SearchFocusTarget.REPLACEMENT -> replacementFocus.requestFocus()
+            null -> return@LaunchedEffect
+        }
+        state.pendingFocus = null
+    }
+
     Surface(modifier = modifier.fillMaxWidth(), tonalElevation = 2.dp) {
         Column(Modifier.padding(8.dp)) {
             Row(
@@ -249,14 +281,14 @@ fun SearchPanel(state: AppState, modifier: Modifier = Modifier) {
                     onValueChange = { state.setSearchQuery(it) },
                     label = { Text("查找") },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(queryFocus),
                 )
                 OutlinedTextField(
                     value = state.searchReplacement,
                     onValueChange = { state.setSearchReplacement(it) },
                     label = { Text("替换为") },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(replacementFocus),
                 )
             }
 

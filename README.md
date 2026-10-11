@@ -41,7 +41,9 @@ usable front end.
 | Desktop module (`desktop`, Kotlin + Compose Multiplatform 1.7.3) | ✅ |
 | `AppState` (tabs / edit / undo / save / close, no Compose dependency) | ✅ |
 | Compose UI: menu bar, tab sidebar, editor pane, metadata panel, status bar | ✅ |
-| JUnit 5 tests | ✅ (460 core + 18 desktop) |
+| Editor commands wired: undo/redo, search & replace, Diff, syntax highlight, bookmarks | ✅ |
+| Keyboard shortcuts (`Keymap` + `ShortcutDispatcher` + F1 help dialog) | ✅ |
+| JUnit 5 tests | ✅ (463 core + 66 desktop) |
 | Gradle Wrapper | ✅ |
 
 Upcoming phases: Phase 1 (Desktop MVP, Compose UI, 30+ formats), Phase 2 (80+ formats,
@@ -123,6 +125,26 @@ FileStudio/
 The desktop app opens an empty window when given no arguments, or opens the given
 files when arguments are passed. Dark theme can be forced with
 `-Dfilestudio.theme=dark`.
+
+### Keyboard shortcuts
+
+Press **F1** in the app for the live list.
+
+| | | |
+|---|---|---|
+| `Ctrl+O` open | `Ctrl+S` save | `Ctrl+W` close tab |
+| `Ctrl+Shift+W` close all | `Ctrl+Q` quit | `F1` shortcut help |
+| `Ctrl+Z` / `Ctrl+Y` undo | `Ctrl+Shift+Z` redo | `F2` toggle bookmark |
+| `Ctrl+F` find | `Ctrl+H` find & replace | `Ctrl+Alt+Enter` replace all |
+| `F3` next match | `Shift+F3` previous match | |
+| `Ctrl+Tab` next tab | `Ctrl+Shift+Tab` previous tab | |
+| `Ctrl+Shift+K` syntax highlight | `Ctrl+Shift+L` line numbers | `Ctrl+Shift+D` details panel |
+| `Ctrl+Shift+P` search panel | `Ctrl+Shift+I` diff panel | |
+
+Shortcuts are defined in `desktop/src/main/kotlin/com/filestudio/desktop/Shortcuts.kt`
+as data, and applied in `ShortcutDispatcher.kt`. Both are plain Kotlin with no
+Compose rendering, so the binding table and every action's effect are covered by
+headless unit tests — including a check that no two actions claim the same key.
 
 Requirements: a JDK 17+ to run Gradle; the build uses the Gradle JVM toolchain to compile
 with Java 21 (auto-resolved via the foojay resolver plugin if not installed locally).

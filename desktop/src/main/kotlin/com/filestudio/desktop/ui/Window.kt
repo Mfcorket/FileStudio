@@ -5,24 +5,27 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.filestudio.desktop.AppState
+import com.filestudio.desktop.ShortcutDispatcher
 
 /**
  * 应用根布局：菜单栏 + 左中右三栏 + 可折叠面板 + 状态栏。
+ *
+ * [ShortcutHandler] 挂在整棵树的根部，事件先于输入框被截获，
+ * 这样在编辑器里按 Ctrl+S 不会变成「插入一个特殊字符」。
  */
 @Composable
 fun FileStudioApp(
     state: AppState,
+    dispatcher: ShortcutDispatcher,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -39,10 +42,10 @@ fun FileStudioApp(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().then(Modifier),
         topBar = {
             Column {
-                MenuBar(state = state)
+                MenuBar(state = state, dispatcher = dispatcher)
                 HorizontalDivider()
             }
         },
@@ -56,39 +59,41 @@ fun FileStudioApp(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            if (state.showSearchPanel) {
-                SearchPanel(state)
-                HorizontalDivider()
-            }
-            if (state.showDiffPanel) {
-                DiffPanel(state)
-                HorizontalDivider()
-            }
+        ShortcutHandler(dispatcher = dispatcher) {
+            Column(Modifier.fillMaxSize().padding(padding)) {
+                if (state.showSearchPanel) {
+                    SearchPanel(state)
+                    HorizontalDivider()
+                }
+                if (state.showDiffPanel) {
+                    DiffPanel(state)
+                    HorizontalDivider()
+                }
 
-            Row(Modifier.fillMaxSize()) {
-                Sidebar(
-                    tabs = tabs,
-                    activeIndex = state.activeIndex,
-                    handlers = handlers,
-                    onSelect = { state.setActive(it) },
-                    onClose = { state.closeTab(it) },
-                    modifier = Modifier.weight(0.22f),
-                )
-                VerticalDivider()
-                EditorArea(
-                    state = state,
-                    tab = active,
-                    onChange = { state.replaceActiveContent(it) },
-                    modifier = Modifier.weight(0.48f),
-                )
-                if (state.showDetailsPanel) {
-                    VerticalDivider()
-                    DetailsPanel(
-                        metadata = state.activeMetadata(),
-                        stats = state.activeStats(),
-                        modifier = Modifier.weight(0.30f),
+                Row(Modifier.fillMaxSize()) {
+                    Sidebar(
+                        tabs = tabs,
+                        activeIndex = state.activeIndex,
+                        handlers = handlers,
+                        onSelect = { state.setActive(it) },
+                        onClose = { state.closeTab(it) },
+                        modifier = Modifier.weight(0.22f),
                     )
+                    VerticalDivider()
+                    EditorArea(
+                        state = state,
+                        tab = active,
+                        onChange = { state.replaceActiveContent(it) },
+                        modifier = Modifier.weight(0.48f),
+                    )
+                    if (state.showDetailsPanel) {
+                        VerticalDivider()
+                        DetailsPanel(
+                            metadata = state.activeMetadata(),
+                            stats = state.activeStats(),
+                            modifier = Modifier.weight(0.30f),
+                        )
+                    }
                 }
             }
         }

@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.filestudio.desktop.ShortcutDispatcher
 import com.filestudio.desktop.ui.FileStudioApp
 
 /**
@@ -52,8 +53,10 @@ fun AppRoot(
     remember { initialPaths.forEach { state.openPathArg(it) } }
 
     MaterialTheme(colorScheme = if (darkTheme) darkColorScheme() else lightColorScheme()) {
+        val dispatcher = remember { ShortcutDispatcher(state, onExit) }
         FileStudioApp(
             state = state,
+            dispatcher = dispatcher,
             onExit = onExit,
         )
     }

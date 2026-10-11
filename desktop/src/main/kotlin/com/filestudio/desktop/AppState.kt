@@ -15,6 +15,9 @@ import com.filestudio.engine.highlight.SyntaxLanguageRegistry
 import com.filestudio.engine.highlight.Token
 import java.io.File
 
+/** 需要把焦点移到哪个输入框。 */
+enum class SearchFocusTarget { QUERY, REPLACEMENT }
+
 /**
  * 一个已打开的标签页。
  *
@@ -475,6 +478,12 @@ class AppState(
 
     /** 是否显示行号。 */
     var showLineNumbers: Boolean = true
+
+    /** 是否弹出「打开文件」对话框。 */
+    var showOpenDialog: Boolean = false
+
+    /** 需要把焦点移到哪个输入框。 */
+    var pendingFocus: SearchFocusTarget? = null
 
     /** 光标所在行（从 0 开始）。 */
     var cursorLine: Int = 0
