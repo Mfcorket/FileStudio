@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/Mfcorket/FileStudio/actions/workflows/ci.yml/badge.svg)](https://github.com/Mfcorket/FileStudio/actions/workflows/ci.yml)
 
-> Cross-platform file viewer & editor — **Phase 0 complete, Phase 1 engine work in progress**.
+> Cross-platform file viewer & editor — **Phase 1 Desktop MVP: buildable and verified**.
 > Version: 0.1.0 · Target: Windows 8.1+, macOS 12+, Linux, Android 9+
-> Core: Java 21 · UI (later): Kotlin Multiplatform + Compose Multiplatform · Build: Gradle 8.14
+> Core: Java 21 · UI: Kotlin + Compose Multiplatform (desktop) · Build: Gradle 8.14
 
 FileStudio is a unified file viewing/editing platform with a plugin-based architecture.
 It is **not** a file-format conversion tool — it focuses on opening, viewing, and editing
@@ -12,13 +12,14 @@ files across 70+ formats via a single consistent API.
 
 ## Status
 
-Phase 0 (core skeleton) is complete and verified. This iteration extends the core engine
-with the editing/syntax/search components named in the planning architecture and adds
-format handlers, moving toward Phase 1's 30-format target.
+Phase 0 (core skeleton) and the Phase 1 editing engine are complete and verified.
+This iteration adds the **desktop application module**: a Kotlin + Compose
+Multiplatform UI that binds to the existing Java core and gives the engine a
+usable front end.
 
 | Deliverable | Status |
 |-------------|--------|
-| Gradle multi-module scaffold (`core-java21`) | ✅ |
+| Gradle multi-module scaffold (`core-java21` + `desktop`) | ✅ |
 | Core data models (`Document`, `EditCapability`, `PluginHandlerInfo`) | ✅ |
 | SPI plugin framework (`FileHandler`, `FileHandlerFactory`, `FileStudioPlugin`, `PluginManager`) | ✅ |
 | Built-in text handlers: text, JSON, XML, properties, INI, CSV/TSV, Markdown, YAML, TOML, HTML, CSS | ✅ (11 handlers) |
@@ -37,7 +38,10 @@ format handlers, moving toward Phase 1's 30-format target.
 | `DiffEngine` (line-level LCS diff, stats, unified output) | ✅ |
 | `EditorSession` / `EditorSessionManager` (multi-tab) | ✅ |
 | `MagicBytesDetector` (content-based format sniffing) | ✅ |
-| JUnit 5 tests | ✅ (460 tests) |
+| Desktop module (`desktop`, Kotlin + Compose Multiplatform 1.7.3) | ✅ |
+| `AppState` (tabs / edit / undo / save / close, no Compose dependency) | ✅ |
+| Compose UI: menu bar, tab sidebar, editor pane, metadata panel, status bar | ✅ |
+| JUnit 5 tests | ✅ (460 core + 18 desktop) |
 | Gradle Wrapper | ✅ |
 
 Upcoming phases: Phase 1 (Desktop MVP, Compose UI, 30+ formats), Phase 2 (80+ formats,
@@ -52,6 +56,13 @@ FileStudio/
 ├── gradle/wrapper/...
 ├── gradlew, gradlew.bat
 ├── dictionary.md                # File-type dictionary
+├── desktop/                     # Kotlin + Compose Multiplatform desktop app
+│   └── src/
+│       ├── main/kotlin/com/filestudio/desktop/
+│       │   ├── Main.kt          # entry point, window, CLI path arguments
+│       │   ├── AppState.kt      # UI state: tabs / edit / undo / save / close
+│       │   └── ui/              # MenuBar, Sidebar, DetailsPanel, StatusBar, EditorArea
+│       └── test/kotlin/com/filestudio/desktop/AppStateTest.kt
 └── core-java21/                 # Java 21 core engine
     └── src/
         ├── main/
@@ -60,11 +71,12 @@ FileStudio/
         │   │   │                # FileStudioException, FileStudioMain
         │   │   ├── plugin/      # FileHandler, FileHandlerFactory, FileStudioPlugin, PluginManager
         │   │   │   ├── handlers/# AbstractTextHandler + Text/JSON/XML/Properties/INI/CSV/
-        │   │   │   │            # Markdown/YAML/TOML/HTML/CSS
+        │   │   │   │            # Markdown/YAML/TOML/HTML/CSS + binary/archival handlers
         │   │   │   └── sample/  # SamplePlugin (SPI demo)
         │   │   └── engine/      # DocumentParser, EncodingDetector, EditorEngine, HistoryManager,
         │   │                    # LineIndex, DocumentStats, BookmarkManager, Bookmark,
-        │   │                    # SearchReplace, SearchOptions
+        │   │                    # SearchReplace, SearchOptions, EditorSession(+Manager),
+        │   │                    # MagicBytesDetector, DiffEngine
         │   │       └── highlight/# SyntaxHighlighter, SyntaxProfile, SyntaxLanguageRegistry,
         │   │                      # Token, TokenKind
         │   ├── resources/
@@ -74,7 +86,7 @@ FileStudio/
         └── test/java/com/filestudio/
             ├── core/DocumentTest.java
             ├── plugin/PluginManagerTest.java
-            ├── plugin/handlers/{Json,Xml,MiscText,ExtendedFormat}HandlerTest.java
+            ├── plugin/handlers/*HandlerTest.java
             ├── engine/{FileStudioCore,EncodingDetector,EditorEngine,HistoryManager,
             │           LineIndex,DocumentStats,BookmarkManager,SearchReplace}Test.java
             ├── engine/highlight/SyntaxHighlighterTest.java
@@ -89,11 +101,28 @@ FileStudio/
 
 # Run tests
 ./gradlew :core-java21:test
+./gradlew :desktop:test
 
 # Run the core engine self-demo (no args) or parse a file
 ./gradlew :core-java21:runDemo
 ./gradlew :core-java21:runDemo -Pfile=notes.txt
+
+# Launch the desktop application
+./gradlew :desktop:run
+
+# Launch with a file (file association / "open with")
+./gradlew :desktop:run --args="README.md"
+
+# Package a distributable for the current OS (jpackage-based)
+./gradlew :desktop:packageDistributionForCurrentOS
+
+# Or a single self-contained jar
+./gradlew :desktop:packageUberJarForCurrentOS
 ```
+
+The desktop app opens an empty window when given no arguments, or opens the given
+files when arguments are passed. Dark theme can be forced with
+`-Dfilestudio.theme=dark`.
 
 Requirements: a JDK 17+ to run Gradle; the build uses the Gradle JVM toolchain to compile
 with Java 21 (auto-resolved via the foojay resolver plugin if not installed locally).

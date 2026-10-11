@@ -52,7 +52,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-reports-${{ matrix.os }}
-          path: core-java21/build/reports/tests/test/
+          path: |
+            core-java21/build/reports/tests/test/
+            desktop/build/reports/tests/test/
           if-no-files-found: ignore
 
       - name: Upload javadoc
