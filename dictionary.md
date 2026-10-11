@@ -161,6 +161,7 @@
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
 | class | application/java-vm | VIEW_ONLY | Java 字节码 \[内置\] JavaClassFileHandler（编译版本/类名/修饰符） |
+| exe / dll / sys / so / elf / dylib | application/x-msdownload | VIEW_ONLY | [内置] ExecutableFileHandler：PE 与 ELF 头、架构、子系统、入口点、节表、ASLR/DEP、DT_NEEDED |
 
 ## 17. 自定义/示例
 | 扩展名 | MIME | 编辑 | 说明 |

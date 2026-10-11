@@ -33,6 +33,7 @@ import com.filestudio.plugin.handlers.TarArchiveHandler;
 import com.filestudio.plugin.handlers.TomlFileHandler;
 import com.filestudio.plugin.handlers.VideoFileHandler;
 import com.filestudio.plugin.handlers.ApkFileHandler;
+import com.filestudio.plugin.handlers.ExecutableFileHandler;
 import com.filestudio.plugin.handlers.XmlFileHandler;
 import com.filestudio.plugin.handlers.YamlFileHandler;
 import com.filestudio.plugin.handlers.ZipArchiveHandler;
@@ -111,6 +112,7 @@ public final class FileStudioCore {
         list.add(new GzipArchiveHandler());
         list.add(new SevenZipFileHandler());
         list.add(new ApkFileHandler());
+        list.add(new ExecutableFileHandler());
         list.add(new SqliteFileHandler());
         list.add(new JavaClassFileHandler());
         list.add(new ObjFileHandler());
