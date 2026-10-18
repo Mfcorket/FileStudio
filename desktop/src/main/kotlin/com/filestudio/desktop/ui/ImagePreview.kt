@@ -40,6 +40,7 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.filestudio.desktop.ImageDecoders
 import com.filestudio.desktop.Tab
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,6 +66,7 @@ fun ImagePreview(
     modifier: Modifier = Modifier,
 ) {
     var image by remember(tab.path) { mutableStateOf<Image?>(null) }
+    var decoderName by remember(tab.path) { mutableStateOf<String?>(null) }
     var loading by remember(tab.path) { mutableStateOf(true) }
     var failure by remember(tab.path) { mutableStateOf<String?>(null) }
     var manualScale by remember(tab.path) { mutableFloatStateOf(1f) }
@@ -83,30 +85,26 @@ fun ImagePreview(
         failure = null
         image?.close()
         image = null
+        decoderName = null
 
-        val result = withContext(Dispatchers.IO) {
+        // 解码链：Skia 优先，其次 ImageIO（补 TIFF 等 Skia 不支持的格式）
+        var errorMessage: String? = null
+        val decoded: Pair<Image, String>? = withContext(Dispatchers.IO) {
             try {
-                val bytes = Files.readAllBytes(Path.of(tab.path))
-                val decoded = Image.makeFromEncoded(bytes)
-                if (decoded == null) {
-                    Result.failure(IllegalStateException("该格式无法解码预览"))
-                } else {
-                    Result.success(decoded)
-                }
+                ImageDecoders.decodeWithName(Files.readAllBytes(Path.of(tab.path)))
             } catch (e: Exception) {
-                Result.failure(e)
+                errorMessage = e.message ?: "无法读取文件"
+                null
             }
         }
-        result.fold(
-            onSuccess = {
-                image = it
-                loading = false
-            },
-            onFailure = {
-                failure = it.message ?: "无法加载图片"
-                loading = false
-            },
-        )
+        loading = false
+        if (decoded != null) {
+            image = decoded.first
+            decoderName = decoded.second
+            failure = null
+        } else {
+            failure = errorMessage ?: "没有可用的解码器能处理该格式"
+        }
     }
 
     Column(modifier.fillMaxSize()) {
@@ -114,6 +112,7 @@ fun ImagePreview(
             fileName = tab.fileName,
             fitMode = fitMode,
             canZoom = image != null,
+            decoder = decoderName,
             onFit = { fitMode = true },
             onActualSize = {
                 fitMode = false
@@ -217,6 +216,7 @@ private fun PreviewToolbar(
     fileName: String,
     fitMode: Boolean,
     canZoom: Boolean,
+    decoder: String?,
     onFit: () -> Unit,
     onActualSize: () -> Unit,
     onZoomIn: () -> Unit,
@@ -235,6 +235,14 @@ private fun PreviewToolbar(
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.weight(1f),
             )
+            if (decoder != null) {
+                Text(
+                    "解码器：$decoder",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 10.dp),
+                )
+            }
             if (scalePercent != null) {
                 Text("$scalePercent%", style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.size(8.dp))
