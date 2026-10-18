@@ -61,6 +61,12 @@ fun EditorArea(
         return
     }
 
+    // 图片走预览而不是文本：核心只给了元数据，content 是空串
+    if (tab.readOnly && tab.session.document.mimeType.startsWith("image/")) {
+        ImagePreview(tab = tab, modifier = modifier)
+        return
+    }
+
     if (tab.readOnly) {
         Column(modifier.fillMaxSize()) {
             ReadOnlyBanner(tab)

@@ -63,10 +63,13 @@ public class ImageFileHandler implements FileHandler {
     public boolean canHandle(File file) {
         if (file == null) return false;
         if (file.isFile()) {
-            // 文件存在：按魔数校验内容（覆盖扩展名，拒绝伪装/损坏文件）
-            return MagicBytesBridge.isImage(file);
+            // 优先按内容判定，避免把改名伪装的文件误当图片；
+            // 但不能只看内容——存在我们不解析头部、而解码器其实能显示的格式，
+            // 所以嗅探失败时再回落到扩展名，宁可交给预览去提示「无法解码」。
+            return MagicBytesBridge.isImage(file)
+                    || SUPPORTED.contains(extensionOf(file.getName()));
         }
-        // 文件不存在（假设路径 / 新建对话框场景）：按扩展名
+        // 文件不存在时按路径 / 新建对话框判断
         return SUPPORTED.contains(extensionOf(file.getName()));
     }
 
@@ -78,11 +81,15 @@ public class ImageFileHandler implements FileHandler {
         Path path = file.toPath();
         byte[] head = readHead(path, 64);
         String realExt = MagicBytesBridge.imageExtension(head);
-        String mime = mimeFor(realExt);
+        // 嗅探不出真实格式时回落到文件自身的扩展名：mime 必须由它推导，
+        // 否则一个我们不解析头部、但 Skia 能解码的格式会退化成
+        // application/octet-stream，界面也就不会走图片预览。
+        String effExt = realExt.isEmpty() ? extensionOf(file.getName()) : realExt;
+        String mime = mimeFor(effExt);
 
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("size", file.length());
-        meta.put("format", realExt.isEmpty() ? extensionOf(file.getName()) : realExt);
+        meta.put("format", effExt);
         meta.put("viewOnly", true);
 
         ImageInfo info = parseDimensions(realExt, head);
@@ -97,7 +104,7 @@ public class ImageFileHandler implements FileHandler {
         }
 
         // 图像无文本内容，Document 以空 content + 元数据呈现
-        return new Document(path, mime, realExt.isEmpty() ? extensionOf(file.getName()) : realExt,
+        return new Document(path, mime, effExt,
                 "", meta, file.length(), getEditCapability());
     }
 

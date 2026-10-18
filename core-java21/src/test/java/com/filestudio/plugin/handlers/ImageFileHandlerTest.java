@@ -118,12 +118,32 @@ class ImageFileHandlerTest {
     }
 
     @Test
-    void unknownImageContentCannotBeParsed(@TempDir Path dir) throws IOException {
+void unknownImageContentIsStillClaimedByExtension(@TempDir Path dir) throws IOException {
         Path p = dir.resolve("broken.png");
         byte[] junk = "this is not a png at all, just some random text".getBytes();
         Files.write(p, junk);
-        // canHandle 应拒绝（既非扩展名匹配也非魔数匹配）
-        assertFalse(handler.canHandle(p.toFile()));
+
+        // 行为说明：canHandle 先按内容判定，失败后再回落到扩展名。
+        // 因此一个损坏的 .png 仍由图片处理器接手——界面显示「无法预览此图片」
+        // 并保留元数据，而不是把用户带进文本编辑器看一堆乱码字节。
+        assertTrue(handler.canHandle(p.toFile()));
+
+        Document doc = handler.parse(p.toFile());
+        assertEquals("image/png", doc.getMimeType());
+        assertEquals("unavailable", doc.getMetadata().get("dimensions"));
+    }
+
+    @Test
+    void contentSniffingTakesPriorityOverExtension(@TempDir Path dir) throws IOException {
+        // 真实 PNG 内容 + 无扩展名：内容判定应认领它
+        Path p = dir.resolve("noext");
+        byte[] png = new byte[25];
+        byte[] sig = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+        System.arraycopy(sig, 0, png, 0, 8);
+        Files.write(p, png);
+
+        assertTrue(handler.canHandle(p.toFile()));
+        assertEquals("image/png", handler.parse(p.toFile()).getMimeType());
     }
 
     @Test
