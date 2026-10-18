@@ -191,6 +191,9 @@ fun DetailsPanel(
             if (stats != null) {
                 KeyValue("统计", stats)
             }
+            // 文件本身的后缀比处理器归一化的类型更有意义：
+            // .java 被文本处理器打开时 Document.extension 是 "txt"
+            (metadata["fileExtension"] as? String)?.let { KeyValue("文件类型", it) }
             if (metadata.isEmpty()) {
                 Text(
                     "无元数据",

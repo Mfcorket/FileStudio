@@ -30,15 +30,23 @@ fun main(args: Array<String>) {
     val settings = store.load()
 
     application {
+        val windowState = rememberWindowState(
+            size = DpSize(settings.windowWidth.dp, settings.windowHeight.dp)
+        )
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = {
+                // 退出前把窗口尺寸写回配置，否则下次启动永远回到默认大小
+                store.update {
+                    it.copy(
+                        windowWidth = windowState.size.width.value.toInt().coerceIn(640, 10000),
+                        windowHeight = windowState.size.height.value.toInt().coerceIn(400, 10000),
+                    )
+                }
+                exitApplication()
+            },
             title = "FileStudio",
-            state = rememberWindowState(
-                size = DpSize(settings.windowWidth.dp, settings.windowHeight.dp)
-            ),
+            state = windowState,
         ) {
-            // exitApplication 只在 application { } 的作用域内可见，
-            // 必须在这里取出来传给 AppRoot
             AppRoot(
                 initialPaths = initialPaths,
                 store = store,

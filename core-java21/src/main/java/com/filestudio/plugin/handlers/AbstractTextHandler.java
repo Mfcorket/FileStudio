@@ -57,6 +57,12 @@ public abstract class AbstractTextHandler implements FileHandler {
         meta.put("encoding", charset.name());
         meta.put("bomBytes", cab.bomBytes());
         meta.put("size", size);
+        // Document.extension 给出的是「本处理器归一化后的类型」（文本类一律 txt），
+        // 用户真正关心的是文件本身的扩展名，因此单独记一份，界面据此显示。
+        String fileExt = getExtensionFromName(file.getName());
+        if (!fileExt.isEmpty()) {
+            meta.put("fileExtension", fileExt);
+        }
 
         String content;
         if (size > MAX_IN_MEMORY_BYTES) {
@@ -100,6 +106,10 @@ public abstract class AbstractTextHandler implements FileHandler {
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("size", file.length());
         meta.put("lastModified", file.lastModified());
+        String ext = getExtensionFromName(file.getName());
+        if (!ext.isEmpty()) {
+            meta.put("fileExtension", ext);
+        }
         EncodingDetector.CharsetAndBom cab = EncodingDetector.detect(file.toPath());
         meta.put("encoding", cab.charset().name());
         return meta;

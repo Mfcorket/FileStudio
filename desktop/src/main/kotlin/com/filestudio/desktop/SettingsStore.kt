@@ -72,6 +72,20 @@ class SettingsStore(
         }
     }
 
+    /**
+     * 以当前配置为基准做一次变换并保存。
+     *
+     * 用于「读取—修改—写回」这类不想自己管 load/save 的场合，
+     * 例如退出时把窗口尺寸记回配置。
+     *
+     * @return 变换后的配置
+     */
+    fun update(transform: (Settings) -> Settings): Settings {
+        val next = transform(load()).sanitized()
+        save(next)
+        return next
+    }
+
     /** 配置是否可用；内存模式恒为 true（始终有一份配置）。 */
     fun exists(): Boolean =
         if (memoryOnly) {

@@ -2,6 +2,7 @@ package com.filestudio.desktop.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,14 +26,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,6 +86,7 @@ fun EditorArea(
     val tokens = state.highlightedTokens()
     val language = state.syntaxLanguageName()
     val fontSize = state.settings.fontSizeSp.sp
+    val wrap = state.settings.wrapLines
 
     Column(modifier.fillMaxSize()) {
         EditorHeader(tab, language, state.bookmarks().size)
@@ -95,33 +99,49 @@ fun EditorArea(
                     fontSize = fontSize,
                 )
             }
-            BasicTextField(
-                value = value,
-                onValueChange = { newValue ->
-                    value = newValue
-                    state.moveCursorToOffset(newValue.selection.end)
-                    // 选区变化不影响内容，跳过等长替换以减少无谓的状态写入
-                    if (newValue.text != value.text) {
-                        onChange(newValue.text)
-                    }
-                },
-                modifier = Modifier
+            Box(
+                Modifier
                     .weight(1f)
                     .fillMaxSize()
-                    .padding(8.dp),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = fontSize,
-                ),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(
-                    MaterialTheme.colorScheme.primary
-                ),
-                visualTransformation = if (tokens.isEmpty()) {
-                    VisualTransformation.None
-                } else {
-                    SyntaxTransformation(tokens, state)
-                },
-            )
+                    // 关闭换行时把输入框放进无宽度约束的滚动容器：
+                    // BasicTextField 只 softWrap 参数（且那条重载还需要
+                    // CodepointTransformation），用「按内容宽度测量 + 横向滚动」
+                    // 达到同样效果且不必碰那套实验性 API。
+                    .then(
+                        if (wrap) {
+                            Modifier
+                        } else {
+                            Modifier.horizontalScroll(rememberScrollState())
+                        }
+                    )
+                    .padding(8.dp)
+            ) {
+                BasicTextField(
+                    value = value,
+                    onValueChange = { newValue ->
+                        value = newValue
+                        state.moveCursorToOffset(newValue.selection.end)
+                        if (newValue.text != value.text) {
+                            onChange(newValue.text)
+                        }
+                    },
+                    modifier = if (wrap) {
+                        Modifier.fillMaxWidth()
+                    } else {
+                        Modifier.fillMaxWidth().wrapContentWidth(unbounded = true)
+                    },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = fontSize,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    visualTransformation = if (tokens.isEmpty()) {
+                        VisualTransformation.None
+                    } else {
+                        SyntaxTransformation(tokens, state)
+                    },
+                )
+            }
         }
     }
 }
