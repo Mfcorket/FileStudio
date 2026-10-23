@@ -1,6 +1,7 @@
 package com.filestudio.plugin.handlers;
 
 import com.filestudio.core.Document;
+import com.filestudio.engine.ExifExtractor;
 import com.filestudio.core.EditCapability;
 import com.filestudio.core.FileStudioException;
 import com.filestudio.plugin.FileHandler;
@@ -103,9 +104,25 @@ public class ImageFileHandler implements FileHandler {
             meta.put("dimensions", "unavailable");
         }
 
-        // 图像无文本内容，Document 以空 content + 元数据呈现
+        // EXIF：JPEG 走 APP1 段，TIFF 直接从 IFD0 读；没有则不加任何键
+        Map<String, Object> exif = ExifExtractor.extract(path);
+        if (!exif.isEmpty()) {
+            meta.put("exifTagCount", exif.size());
+            if (exif.get("orientation") != null) {
+                meta.put("orientationText",
+                        ExifExtractor.orientationName(asLong(exif.get("orientation"))));
+            }
+            meta.put("exif", exif);
+        }
+
+        // 图片文件无文本内容：Document 以空 content + 元数据表示
         return new Document(path, mime, effExt,
                 "", meta, file.length(), getEditCapability());
+    }
+
+    /** EXIF 值可能是 Long，也可能是数字。 */
+    private static long asLong(Object v) {
+        return v instanceof Number n ? n.longValue() : 0L;
     }
 
     @Override
