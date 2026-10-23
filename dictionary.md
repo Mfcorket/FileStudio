@@ -71,7 +71,7 @@
 | tar | application/x-tar | PARTIAL | tar \[内置\] TarArchiveHandler |
 | gz, gzip, tgz | application/gzip | PARTIAL | gzip \[内置\] GzipArchiveHandler |
 | rar | application/vnd.rar | PARTIAL | RAR |
-| bz2 | application/x-bzip2 | PARTIAL | bzip2 |
+| bz2 | application/x-bzip2 | PARTIAL | bzip2 \[内置\] Bzip2FileHandler 块大小/压缩级别/完整性标志 |
 
 ## 6. 图片类（PARTIAL）
 | 扩展名 | MIME | 编辑 | 说明 |
@@ -81,7 +81,7 @@
 | gif | image/gif | PARTIAL | GIF |
 | webp | image/webp | PARTIAL | WebP |
 | bmp | image/bmp | PARTIAL | BMP |
-| svg | image/svg+xml | FULL | SVG（文本可编辑） |
+| svg | image/svg+xml | FULL | SVG \[内置\] SvgFileHandler 尺寸/viewBox/标题/图形元素计数，文本可编辑 |
 | ico, cur | image/x-icon | VIEW_ONLY | Windows 图标 \[内置\] IcoFileHandler 各尺寸与位深 |
 | heic, heif, heix, hevc, heim, heis, hevm, hevs | image/heic | VIEW_ONLY | HEIF/HEIC \[内置\] HeicFileHandler 尺寸/品牌/编码类型 |
 | avif, avis | image/avif | VIEW_ONLY | AVIF \[内置\] 同一 ISO-BMFF 容器 |

@@ -103,6 +103,11 @@ public final class MagicBytesDetector {
         if (hasPrefix(head, len, new byte[]{0x1F, (byte) 0x8B})) {
             return new Detection("gz", "application/gzip", 1.0);
         }
+        // BZh + 1-9（块大小级别）
+        if (len >= 4 && head[0] == 'B' && head[1] == 'Z' && head[2] == 'h'
+                && head[3] >= '1' && head[3] <= '9') {
+            return new Detection("bz2", "application/x-bzip2", 1.0);
+        }
         if (hasPrefix(head, len, new byte[]{0x37, 0x7A, (byte) 0xBC, (byte) 0xAF, 0x27, 0x1C})) {
             return new Detection("7z", "application/x-7z-compressed", 1.0);
         }

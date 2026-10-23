@@ -9,6 +9,7 @@ import com.filestudio.plugin.handlers.AudioFileHandler;
 import com.filestudio.plugin.handlers.CertificateFileHandler;
 import com.filestudio.plugin.handlers.CsvFileHandler;
 import com.filestudio.plugin.handlers.CssFileHandler;
+import com.filestudio.plugin.handlers.Bzip2FileHandler;
 import com.filestudio.plugin.handlers.HtmlFileHandler;
 import com.filestudio.plugin.handlers.HeicFileHandler;
 import com.filestudio.plugin.handlers.ImageFileHandler;
@@ -28,6 +29,7 @@ import com.filestudio.plugin.handlers.PropertiesFileHandler;
 import com.filestudio.plugin.handlers.SevenZipFileHandler;
 import com.filestudio.plugin.handlers.SqliteFileHandler;
 import com.filestudio.plugin.handlers.StlFileHandler;
+import com.filestudio.plugin.handlers.SvgFileHandler;
 import com.filestudio.plugin.handlers.TextFileHandler;
 import com.filestudio.plugin.handlers.TiffFileHandler;
 import com.filestudio.plugin.handlers.TarArchiveHandler;
@@ -115,6 +117,7 @@ public final class FileStudioCore {
         list.add(new VideoFileHandler());
         list.add(new TarArchiveHandler());
         list.add(new GzipArchiveHandler());
+        list.add(new Bzip2FileHandler());
         list.add(new SevenZipFileHandler());
         list.add(new ApkFileHandler());
         list.add(new ExecutableFileHandler());
@@ -130,6 +133,7 @@ public final class FileStudioCore {
         list.add(new IcoFileHandler());
         list.add(new TiffFileHandler());
         list.add(new HeicFileHandler());
+        list.add(new SvgFileHandler());
         list.add(new TextFileHandler());
         return Collections.unmodifiableList(list);
     }

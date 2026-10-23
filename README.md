@@ -22,8 +22,8 @@ usable front end.
 | Gradle multi-module scaffold (`core-java21` + `desktop`) | ✅ |
 | Core data models (`Document`, `EditCapability`, `PluginHandlerInfo`) | ✅ |
 | SPI plugin framework (`FileHandler`, `FileHandlerFactory`, `FileStudioPlugin`, `PluginManager`) | ✅ |
-| Built-in text handlers: text, JSON, XML, properties, INI, CSV/TSV, Markdown, YAML, TOML, HTML, CSS | ✅ (11 handlers) |
-| Binary/metadata handlers: image, ZIP, 7z, RAR, APK/AAB, TAR/gzip, audio, PDF, EPUB, OOXML/ODT (docx/xlsx/pptx/odt), font, certificate, video, SQLite, Java class, OBJ/STL/glTF, ICO, TIFF, HEIF/AVIF, PE/ELF executable, Parquet, OLE | ✅ (25 handlers) |
+| Built-in text handlers: text, JSON, XML, SVG, properties, INI, CSV/TSV, Markdown, YAML, TOML, HTML, CSS | ✅ (12 handlers) |
+| Binary/metadata handlers: image, ZIP, 7z, RAR, APK/AAB, TAR/gzip, bz2, audio, PDF, EPUB, OOXML/ODT (docx/xlsx/pptx/odt), font, certificate, video, SQLite, Java class, OBJ/STL/glTF, ICO, TIFF, HEIF/AVIF, PE/ELF executable, Parquet, OLE | ✅ (26 handlers) |
 | `DocumentParser` engine facade | ✅ |
 | `EditorEngine` (edit / undo / redo / save / modification tracking) | ✅ |
 | `HistoryManager` (undo/redo stack, bounded, coalescing) | ✅ |
@@ -46,7 +46,7 @@ usable front end.
 | Top menu bar (文件 / 编辑 / 视图 / 工具 / 插件 / 帮助) | ✅ |
 | User settings (`Settings` + `SettingsStore`, hand-editable JSON) | ✅ |
 | EXIF metadata extraction (JPEG APP1 / bare TIFF, endian + GPS sub-IFD) | ✅ |
-| JUnit 5 tests | ✅ (499 core + 117 desktop) |
+| JUnit 5 tests | ✅ (509 core + 117 desktop) |
 | Gradle Wrapper | ✅ |
 
 Upcoming phases: Phase 1 (Desktop MVP, Compose UI, 30+ formats), Phase 2 (80+ formats,
