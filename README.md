@@ -45,7 +45,8 @@ usable front end.
 | Keyboard shortcuts (`Keymap` + `ShortcutDispatcher` + F1 help dialog) | ✅ |
 | Top menu bar (文件 / 编辑 / 视图 / 工具 / 插件 / 帮助) | ✅ |
 | User settings (`Settings` + `SettingsStore`, hand-editable JSON) | ✅ |
-| JUnit 5 tests | ✅ (463 core + 93 desktop) |
+| EXIF metadata extraction (JPEG APP1 / bare TIFF, endian + GPS sub-IFD) | ✅ |
+| JUnit 5 tests | ✅ (488 core + 117 desktop) |
 | Gradle Wrapper | ✅ |
 
 Upcoming phases: Phase 1 (Desktop MVP, Compose UI, 30+ formats), Phase 2 (80+ formats,
