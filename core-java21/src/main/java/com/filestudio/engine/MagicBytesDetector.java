@@ -150,6 +150,24 @@ public final class MagicBytesDetector {
         if (hasPrefix(head, len, new byte[]{0x7F, 'E', 'L', 'F'})) {
             return new Detection("elf", "application/x-elf", 1.0);
         }
+        // FLV：'FLV' + 版本(1)
+        if (len >= 4 && head[0] == 'F' && head[1] == 'L' && head[2] == 'V'
+                && head[3] == 1) {
+            return new Detection("flv", "video/x-flv", 1.0);
+        }
+        // WMV/WMA/ASF：头对象 GUID 3026B275-8E66-CF11-A6D9-00AA0062CE6C
+        if (hasPrefix(head, len, new byte[]{0x30, 0x26, (byte) 0xB2, 0x75,
+                (byte) 0x8E, 0x66, (byte) 0xCF, 0x11, (byte) 0xA6, (byte) 0xD9})) {
+            return new Detection("wmv", "video/x-ms-wmv", 1.0);
+        }
+        // Unreal 包（uasset）：魔数 0x9E2A83C1（LE）
+        if (hasPrefix(head, len, new byte[]{(byte) 0xC1, (byte) 0x83, 0x2A, (byte) 0x9E})) {
+            return new Detection("uasset", "application/x-uasset", 1.0);
+        }
+        // Unreal Pak：魔数 0x5A6F12E1（LE）
+        if (hasPrefix(head, len, new byte[]{(byte) 0xE1, 0x12, 0x6F, 0x5A})) {
+            return new Detection("pak", "application/x-pak", 1.0);
+        }
 
         // ---- 文本内容探测（无 BOM） ----
         String text = decodeAsciiPrefix(head, len);

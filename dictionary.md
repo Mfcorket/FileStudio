@@ -105,7 +105,9 @@
 | avi | video/x-msvideo | VIEW_ONLY | AVI \[内置\] VideoFileHandler |
 | mov | video/quicktime | VIEW_ONLY | MOV \[内置\] VideoFileHandler |
 | webm | video/webm | VIEW_ONLY | WebM \[内置\] 解析 EBML Info/Tracks |
-| flv, wmv | video/* | — | 暂不支持（避免仅识别容器却无元数据） |
+| flv | video/x-flv | VIEW_ONLY | FLV \[内置\] FlvFileHandler 音/视频流标志、首 Tag 类型、onMetaData 时长 |
+| wmv | video/x-ms-wmv | VIEW_ONLY | WMV/ASF \[内置\] WmvFileHandler File Properties 时长、流对象 GUID |
+| wma | audio/x-ms-wma | VIEW_ONLY | WMA \[内置\] 同一 ASF 处理器 |
 
 ## 9. 文档类（PARTIAL）
 | 扩展名 | MIME | 编辑 | 说明 |
@@ -150,9 +152,10 @@
 ## 14. 游戏资产（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
-| unity | application/x-unity | VIEW_ONLY | Unity 场景 |
-| uasset | application/x-uasset | VIEW_ONLY | UE 资产 |
-| pak | application/x-pak | VIEW_ONLY | UE 包 |
+| unity | application/x-unity | FULL | Unity 场景/预置 \[内置\] UnityFileHandler YAML 对象/类 ID 统计，可编辑 |
+| prefab | application/x-unity | FULL | \[内置\] 同一处理器（YAML 文本） |
+| uasset | application/x-uasset | VIEW_ONLY | UE 资产 \[内置\] UnrealAssetFileHandler 魔数、versioned/unversioned 判定 |
+| pak | application/x-pak | VIEW_ONLY | UE 包 \[内置\] PakFileHandler 版本、索引偏移与大小 |
 
 ## 15. 移动应用（PARTIAL）
 | 扩展名 | MIME | 编辑 | 说明 |
