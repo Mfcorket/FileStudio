@@ -45,11 +45,11 @@
 |--------|------|------|------|
 | md | text/markdown | FULL | Markdown（内置 MarkdownFileHandler） |
 | markdown | text/markdown | FULL | Markdown（内置） |
-| rst | text/x-rst | FULL | reStructuredText |
-| adoc | text/x-asciidoc | FULL | AsciiDoc |
+| rst | text/x-rst | FULL | reStructuredText（内置 RstFileHandler，标题/指令/链接统计） |
+| adoc | text/x-asciidoc | FULL | AsciiDoc（内置 AsciiDocFileHandler，标题/块/链接统计） |
 | html, htm, xhtml | text/html | FULL | HTML（内置 HtmlFileHandler，标题/深度统计） |
 | css | text/css | FULL | CSS（内置 CssFileHandler，规则/属性统计） |
-| tex | application/x-tex | FULL | LaTeX |
+| tex | application/x-tex | FULL | LaTeX（内置 LatexFileHandler，section/宏包/环境统计） |
 
 ## 4. 数据交换类（FULL）
 | 扩展名 | MIME | 编辑 | 说明 |
@@ -60,7 +60,7 @@
 | toml | application/toml | FULL | TOML（内置 TomlFileHandler，表/键统计） |
 | csv | text/csv | FULL | CSV（内置 CsvFileHandler，分隔符/行列统计） |
 | tsv | text/tab-separated-values | FULL | TSV（内置 CsvFileHandler） |
-| xml plist | application/plist+xml | FULL | plist |
+| xml plist | application/x-plist | FULL | plist（内置 PlistFileHandler，键/值类型统计；识别二进制 bplist 且拒绝） |
 
 ## 5. 压缩归档类（PARTIAL）
 | 扩展名 | MIME | 编辑 | 说明 |
@@ -145,7 +145,7 @@
 | obj | model/obj | VIEW_ONLY | Wavefront OBJ \[内置\] 顶点/法线/纹理/面统计、对象与材质名 |
 | stl | model/stl | VIEW_ONLY | STL \[内置\] 二进制与 ASCII 双编码、包围盒 |
 | gltf, glb | model/gltf+json | VIEW_ONLY | glTF 2.0 \[内置\] JSON 与二进制容器、asset 信息 |
-| fbx | model/fbx | VIEW_ONLY | FBX |
+| fbx | model/fbx | VIEW_ONLY | FBX \[内置\] FbxFileHandler 二进制/ASCII 识别、版本与顶层节点数 |
 
 ## 14. 游戏资产（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
