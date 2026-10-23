@@ -141,7 +141,7 @@ class ShortcutsTest {
     @Test
     fun `f3 and shift-f3 move between matches`() {
         state.openFile(write("m.txt", "a a a").toFile())
-        state.setSearchQuery("a")
+        state.updateSearchQuery("a")
         assertEquals(3, state.matches.size)
 
         dispatcher.handle(Key.F3)
@@ -154,8 +154,8 @@ class ShortcutsTest {
     @Test
     fun `ctrl-alt-enter replaces all`() {
         state.openFile(write("r.txt", "x x x").toFile())
-        state.setSearchQuery("x")
-        state.setSearchReplacement("y")
+        state.updateSearchQuery("x")
+        state.updateSearchReplacement("y")
 
         dispatcher.handle(Key.Enter, ctrl = true, alt = true)
 

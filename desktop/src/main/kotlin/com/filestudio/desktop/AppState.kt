@@ -1,5 +1,9 @@
 package com.filestudio.desktop
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.filestudio.core.FileStudioCore
 import com.filestudio.core.FileStudioException
 import com.filestudio.core.PluginHandlerInfo
@@ -51,22 +55,22 @@ class AppState(
     /** 默认不落盘，测试因此不会读到开发者本机的配置。 */
     private val store: SettingsStore = SettingsStore.inMemory(),
 ) {
-    private val _tabs = mutableListOf<Tab>()
-    private var _active = -1
+    private val _tabs = mutableStateListOf<Tab>()
+    private var _active by mutableStateOf(-1)
 
     /**
      * 用户配置。所有视图开关都从这里派生，避免出现「状态一份、设置一份」
      * 两个真相来源而慢慢漂移。
      */
-    var settings: Settings = store.load()
+    var settings: Settings by mutableStateOf(store.load())
         private set
 
     /** 最近一条状态消息，显示在底部状态栏。 */
-    var status: String = "就绪"
+    var status: String by mutableStateOf("就绪")
         private set
 
     /** 最近一次错误消息，为 {@code null} 表示没有错误。 */
-    var error: String? = null
+    var error: String? by mutableStateOf(null)
         private set
 
     init {
@@ -272,38 +276,38 @@ class AppState(
     // ---- 搜索与替换 ----
 
     /** 当前搜索关键字。 */
-    var searchQuery: String = ""
+    var searchQuery: String by mutableStateOf("")
         private set
 
     /** 当前替换文本。 */
-    var searchReplacement: String = ""
+    var searchReplacement: String by mutableStateOf("")
         private set
 
     /** 当前搜索选项（大小写敏感 / 全词 / 正则）。 */
-    var searchOptions: SearchOptions = SearchOptions.defaultOptions()
+    var searchOptions: SearchOptions by mutableStateOf(SearchOptions.defaultOptions())
         private set
 
     /** 当前匹配列表，随文档内容与选项变化而重算。 */
-    var matches: List<SearchMatch> = emptyList()
+    var matches: List<SearchMatch> by mutableStateOf(emptyList())
         private set
 
     /** 当前高亮的匹配下标；-1 表示没有选中项。 */
-    var currentMatchIndex: Int = -1
+    var currentMatchIndex: Int by mutableStateOf(-1)
         private set
 
     /** 设置搜索关键字并立即重新计算匹配。 */
-    fun setSearchQuery(query: String) {
+    fun updateSearchQuery(query: String) {
         searchQuery = query
         refreshMatches()
     }
 
     /** 设置替换文本。 */
-    fun setSearchReplacement(replacement: String) {
+    fun updateSearchReplacement(replacement: String) {
         searchReplacement = replacement
     }
 
     /** 设置搜索选项并重新计算匹配。 */
-    fun setSearchOptions(options: SearchOptions) {
+    fun updateSearchOptions(options: SearchOptions) {
         searchOptions = options
         refreshMatches()
     }
@@ -485,10 +489,10 @@ class AppState(
         set(value) = updateSettings { it.copy(showDetailsPanel = value) }
 
     /** 是否显示搜索替换面板（会话级，不持久化）。 */
-    var showSearchPanel: Boolean = false
+    var showSearchPanel: Boolean by mutableStateOf(false)
 
     /** 是否显示 Diff 面板（会话级，不持久化）。 */
-    var showDiffPanel: Boolean = false
+    var showDiffPanel: Boolean by mutableStateOf(false)
 
     /** 是否显示行号（由配置驱动）。 */
     var showLineNumbers: Boolean
@@ -496,13 +500,13 @@ class AppState(
         set(value) = updateSettings { it.copy(showLineNumbers = value) }
 
     /** 是否弹出「打开文件」对话框。 */
-    var showOpenDialog: Boolean = false
+    var showOpenDialog: Boolean by mutableStateOf(false)
 
     /** 是否显示设置对话框。 */
-    var showSettingsDialog: Boolean = false
+    var showSettingsDialog: Boolean by mutableStateOf(false)
 
     /** 需要把焦点移到哪个输入框。 */
-    var pendingFocus: SearchFocusTarget? = null
+    var pendingFocus: SearchFocusTarget? by mutableStateOf(null)
 
     /**
      * 设置状态栏消息。
@@ -510,7 +514,7 @@ class AppState(
      * 供界面在无法直接执行某个动作时给出明确说明，
      * 而不是让菜单点击后毫无反应。
      */
-    fun setStatus(message: String) {
+    fun updateStatus(message: String) {
         status = message
     }
 
@@ -544,7 +548,7 @@ class AppState(
     fun clearRecentFiles() = updateSettings { it.copy(recentFiles = emptyList()) }
 
     /** 光标所在行（从 0 开始）。 */
-    var cursorLine: Int = 0
+    var cursorLine: Int by mutableStateOf(0)
 
     /**
      * 把光标移到指定行，超出范围时收敛到有效区间。

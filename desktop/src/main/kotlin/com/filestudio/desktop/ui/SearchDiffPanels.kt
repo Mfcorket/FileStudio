@@ -60,14 +60,14 @@ fun SearchPanel(state: AppState, modifier: Modifier = Modifier) {
             ) {
                 OutlinedTextField(
                     value = state.searchQuery,
-                    onValueChange = { state.setSearchQuery(it) },
+                    onValueChange = { state.updateSearchQuery(it) },
                     label = { Text("查找") },
                     singleLine = true,
                     modifier = Modifier.weight(1f).focusRequester(queryFocus),
                 )
                 OutlinedTextField(
                     value = state.searchReplacement,
-                    onValueChange = { state.setSearchReplacement(it) },
+                    onValueChange = { state.updateSearchReplacement(it) },
                     label = { Text("替换为") },
                     singleLine = true,
                     modifier = Modifier.weight(1f).focusRequester(replacementFocus),
@@ -109,7 +109,7 @@ fun SearchPanel(state: AppState, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(top = 4.dp),
             ) {
                 OptionCheck("区分大小写", state.searchOptions.isCaseSensitive) {
-                    state.setSearchOptions(
+                    state.updateSearchOptions(
                         SearchOptions(
                             it, state.searchOptions.isWholeWord,
                             state.searchOptions.isUseRegex, state.searchOptions.isForward
@@ -117,7 +117,7 @@ fun SearchPanel(state: AppState, modifier: Modifier = Modifier) {
                     )
                 }
                 OptionCheck("全词匹配", state.searchOptions.isWholeWord) {
-                    state.setSearchOptions(
+                    state.updateSearchOptions(
                         SearchOptions(
                             state.searchOptions.isCaseSensitive, it,
                             state.searchOptions.isUseRegex, state.searchOptions.isForward
@@ -125,7 +125,7 @@ fun SearchPanel(state: AppState, modifier: Modifier = Modifier) {
                     )
                 }
                 OptionCheck("正则表达式", state.searchOptions.isUseRegex) {
-                    state.setSearchOptions(
+                    state.updateSearchOptions(
                         SearchOptions(
                             state.searchOptions.isCaseSensitive,
                             state.searchOptions.isWholeWord, it,

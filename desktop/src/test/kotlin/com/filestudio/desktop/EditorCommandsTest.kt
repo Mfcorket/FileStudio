@@ -33,7 +33,7 @@ class EditorCommandsTest {
         // "the cat sat on the mat" 中只有两处 "the"，注意 sat/mat 并不含
         state.openFile(write("s.txt", "the cat sat on the mat").toFile())
 
-        state.setSearchQuery("the")
+        state.updateSearchQuery("the")
 
         assertEquals(2, state.matches.size)
         assertEquals(0, state.currentMatchIndex)
@@ -44,7 +44,7 @@ class EditorCommandsTest {
     @Test
     fun `search counts overlapping-free repeats`() {
         state.openFile(write("rep3.txt", "x x x").toFile())
-        state.setSearchQuery("x")
+        state.updateSearchQuery("x")
         assertEquals(3, state.matches.size)
     }
 
@@ -52,10 +52,10 @@ class EditorCommandsTest {
     fun `empty query clears matches`() {
         state.openFile(write("s2.txt", "hello hello").toFile())
 
-        state.setSearchQuery("hello")
+        state.updateSearchQuery("hello")
         assertEquals(2, state.matches.size)
 
-        state.setSearchQuery("")
+        state.updateSearchQuery("")
         assertTrue(state.matches.isEmpty())
         assertEquals(-1, state.currentMatchIndex)
     }
@@ -64,12 +64,12 @@ class EditorCommandsTest {
     fun `case sensitivity is honoured`() {
         state.openFile(write("case.txt", "Cat cat CAT").toFile())
 
-        state.setSearchOptions(SearchOptions(true, false, false, true))
-        state.setSearchQuery("cat")
+        state.updateSearchOptions(SearchOptions(true, false, false, true))
+        state.updateSearchQuery("cat")
 
         assertEquals(1, state.matches.size, "区分大小写时只应匹配一个")
 
-        state.setSearchOptions(SearchOptions(false, false, false, true))
+        state.updateSearchOptions(SearchOptions(false, false, false, true))
         assertEquals(3, state.matches.size, "不区分大小写时应匹配三个")
     }
 
@@ -77,8 +77,8 @@ class EditorCommandsTest {
     fun `regex search works`() {
         state.openFile(write("re.txt", "a1 b22 c333").toFile())
 
-        state.setSearchOptions(SearchOptions(true, false, true, true))
-        state.setSearchQuery("[a-z]\\d+")
+        state.updateSearchOptions(SearchOptions(true, false, true, true))
+        state.updateSearchQuery("[a-z]\\d+")
 
         assertEquals(3, state.matches.size)
     }
@@ -87,8 +87,8 @@ class EditorCommandsTest {
     fun `invalid regex does not crash`() {
         state.openFile(write("bad.txt", "content").toFile())
 
-        state.setSearchOptions(SearchOptions(true, false, true, true))
-        state.setSearchQuery("[unclosed")
+        state.updateSearchOptions(SearchOptions(true, false, true, true))
+        state.updateSearchQuery("[unclosed")
 
         assertTrue(state.matches.isEmpty())
     }
@@ -96,7 +96,7 @@ class EditorCommandsTest {
     @Test
     fun `next and previous match wrap around`() {
         state.openFile(write("wrap.txt", "x x x").toFile())
-        state.setSearchQuery("x")
+        state.updateSearchQuery("x")
         assertEquals(3, state.matches.size)
 
         assertTrue(state.selectNextMatch())
@@ -116,8 +116,8 @@ class EditorCommandsTest {
     @Test
     fun `replace all updates content and match count`() {
         state.openFile(write("rep.txt", "a a a").toFile())
-        state.setSearchQuery("a")
-        state.setSearchReplacement("bb")
+        state.updateSearchQuery("a")
+        state.updateSearchReplacement("bb")
 
         assertEquals(3, state.replaceAllMatches())
 
@@ -129,8 +129,8 @@ class EditorCommandsTest {
     @Test
     fun `replace current only affects selected match`() {
         state.openFile(write("one.txt", "keep keep").toFile())
-        state.setSearchQuery("keep")
-        state.setSearchReplacement("X")
+        state.updateSearchQuery("keep")
+        state.updateSearchReplacement("X")
 
         assertTrue(state.replaceCurrentMatch())
 
@@ -141,9 +141,9 @@ class EditorCommandsTest {
     @Test
     fun `replace respects regex and case options`() {
         state.openFile(write("rr.txt", "Cat cat").toFile())
-        state.setSearchOptions(SearchOptions(true, false, false, true))
-        state.setSearchQuery("cat")
-        state.setSearchReplacement("dog")
+        state.updateSearchOptions(SearchOptions(true, false, false, true))
+        state.updateSearchQuery("cat")
+        state.updateSearchReplacement("dog")
 
         assertEquals(1, state.replaceAllMatches())
         assertEquals("Cat dog", state.activeTab!!.content)
@@ -154,7 +154,7 @@ class EditorCommandsTest {
         val zip = Files.createTempFile("ro", ".zip")
         Files.write(zip, byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0))
         state.openFile(zip.toFile())
-        state.setSearchQuery("anything")
+        state.updateSearchQuery("anything")
 
         assertEquals(0, state.replaceAllMatches())
         assertNotNull(state.error)
@@ -163,8 +163,8 @@ class EditorCommandsTest {
     @Test
     fun `clear search resets everything`() {
         state.openFile(write("clr.txt", "a a").toFile())
-        state.setSearchQuery("a")
-        state.setSearchReplacement("b")
+        state.updateSearchQuery("a")
+        state.updateSearchReplacement("b")
 
         state.clearSearch()
 

@@ -170,7 +170,7 @@ private fun MenuContent(
             HorizontalDivider()
             Item(null, "复制全部内容", enabled = tab != null) {
                 // 剪贴板需要系统权限，此处明确告知而不是静默失败
-                state.setStatus("请使用编辑框自身的 Ctrl+A / Ctrl+C")
+                state.updateStatus("请使用编辑框自身的 Ctrl+A / Ctrl+C")
                 close()
             }
         }
