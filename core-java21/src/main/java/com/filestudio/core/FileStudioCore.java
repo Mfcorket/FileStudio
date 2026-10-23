@@ -22,6 +22,7 @@ import com.filestudio.plugin.handlers.JsonFileHandler;
 import com.filestudio.plugin.handlers.GltfFileHandler;
 import com.filestudio.plugin.handlers.MarkdownFileHandler;
 import com.filestudio.plugin.handlers.ObjFileHandler;
+import com.filestudio.plugin.handlers.OfficeFileHandler;
 import com.filestudio.plugin.handlers.PdfFileHandler;
 import com.filestudio.plugin.handlers.PropertiesFileHandler;
 import com.filestudio.plugin.handlers.SevenZipFileHandler;
@@ -105,6 +106,7 @@ public final class FileStudioCore {
         list.add(new HtmlFileHandler());
         list.add(new CssFileHandler());
         list.add(new ImageFileHandler());
+        list.add(new OfficeFileHandler());
         list.add(new ZipArchiveHandler());
         list.add(new AudioFileHandler());
         list.add(new PdfFileHandler());

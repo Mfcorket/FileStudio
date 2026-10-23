@@ -113,10 +113,10 @@
 | pdf | application/pdf | PARTIAL | PDF |
 | doc / xls / ppt / msi / msg | application/x-ole-storage | PARTIAL | [内置] OleFileHandler：OLE 复合文档，内部流目录、storage 树、文档类型判定 |
 | epub | application/epub+zip | PARTIAL | EPUB 电子书 \[内置\] EpubFileHandler 书名/作者/章节数 |
-| docx | application/vnd.openxmlformats | PARTIAL | Word |
-| xlsx | application/vnd.openxmlformats | PARTIAL | Excel |
-| pptx | application/vnd.openxmlformats | PARTIAL | PowerPoint |
-| odt | application/vnd.oasis.opendocument | PARTIAL | ODT |
+| docx | application/vnd.openxmlformats-officedocument.wordprocessingml.document | PARTIAL | Word \[内置\] OfficeFileHandler 核心/应用属性、段/表格/图片数 |
+| xlsx | application/vnd.openxmlformats-officedocument.spreadsheetml.sheet | PARTIAL | Excel \[内置\] 同一处理器，工作表名称与数量 |
+| pptx | application/vnd.openxmlformats-officedocument.presentationml.presentation | PARTIAL | PowerPoint \[内置\] 同一处理器，幻灯片数量 |
+| odt | application/vnd.oasis.opendocument.text | PARTIAL | OpenDocument 文本 \[内置\] 同一处理器，meta.xml 属性与页数 |
 
 ## 10. 数据库类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
