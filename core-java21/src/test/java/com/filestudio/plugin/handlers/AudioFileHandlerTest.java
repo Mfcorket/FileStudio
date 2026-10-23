@@ -5,6 +5,7 @@ import com.filestudio.core.EditCapability;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -140,6 +141,112 @@ class AudioFileHandlerTest {
         byte[] junk = "this is not audio at all".getBytes();
         Files.write(p, junk);
         assertFalse(handler.canHandle(p.toFile()));
+    }
+
+    @Test
+    void parsesAacAdtsMetadata(@TempDir Path dir) throws IOException {
+        Path p = dir.resolve("track.aac");
+        // ADTS 头：FF F1（MPEG4, layer=00） 50（profile=1 LC, 采样率索引=4 → 44100） 80（声道=2）
+        // 帧长 13 位 = 0x0200 = 512 字节
+        byte[] aac = new byte[512 * 10];
+        aac[0] = (byte) 0xFF;
+        aac[1] = (byte) 0xF1;
+        aac[2] = 0x50;
+        aac[3] = (byte) 0x80; // 声道低 2 位 = 10
+        aac[4] = 0x40;        // 帧长 bits 10-3
+        aac[5] = 0x00;        // 帧长 bits 2-0
+        // aac[2] = 0x50 → profile=1, sfIdx=4(44100), private=0, ch bit0=0
+        // aac[3] = 0x80 → ch bits 7-6 = 10 (立体声), 帧长 bits 12-11 = 00
+        Files.write(p, aac);
+
+        Document doc = handler.parse(p.toFile());
+        assertEquals("audio/aac", doc.getMimeType());
+        assertEquals("aac", doc.getMetadata().get("format"));
+        assertEquals(44100, doc.getMetadata().get("sampleRate"));
+        assertEquals(2, doc.getMetadata().get("channels"));
+        assertNotNull(doc.getMetadata().get("durationSeconds"));
+        assertTrue((double) doc.getMetadata().get("durationSeconds") > 0);
+    }
+
+    @Test
+    void parsesM4aMetadata(@TempDir Path dir) throws IOException {
+        Path p = dir.resolve("album.m4a");
+        Files.write(p, buildM4a());
+
+        Document doc = handler.parse(p.toFile());
+        assertEquals("audio/mp4", doc.getMimeType());
+        assertEquals("m4a", doc.getMetadata().get("format"));
+        assertEquals(44100, doc.getMetadata().get("sampleRate"));
+        assertEquals(2.0, ((double) doc.getMetadata().get("durationSeconds")));
+        assertEquals("0:02", doc.getMetadata().get("duration"));
+    }
+
+    /** 构造最小 M4A：ftyp(M4A ) + moov( mvhd(v0, 44100, 2s) + mdhd(44100) )。 */
+    private static byte[] buildM4a() {
+        ByteArrayOutputStream o = new ByteArrayOutputStream();
+        // ftyp box: size=0x14(20), "ftyp", major="M4A ", minor=0, compat="isom"
+        writeBeInt(o, 20);
+        writeAscii(o, "ftyp");
+        writeAscii(o, "M4A ");
+        writeBeInt(o, 0);
+        writeAscii(o, "isom");
+
+        // moov box
+        int moovStart = o.size();
+        writeBeInt(o, 0); // 占位
+        writeAscii(o, "moov");
+
+        // mvhd box (v0: 28 字节内容：版本1+flags3+修改8+创建8+timescale4+duration4)
+        int mvhdStart = o.size();
+        writeBeInt(o, 0);
+        writeAscii(o, "mvhd");
+        o.write(0); o.write(0); o.write(0); o.write(0); // version=0,flags=0
+        writeBeInt(o, 0);    // creation
+        writeBeInt(o, 0);    // modification
+        writeBeInt(o, 44100); // timescale
+        writeBeInt(o, 88200); // duration = 2s
+        int mvhdEnd = o.size();
+        int mvhdSize = mvhdEnd - mvhdStart;
+        writeBeIntAt(o, mvhdStart, mvhdSize);
+
+        // mdhd box (v0: 32 字节)
+        int mdhdStart = o.size();
+        writeBeInt(o, 0);
+        writeAscii(o, "mdhd");
+        o.write(0); o.write(0); o.write(0); o.write(0);
+        writeBeInt(o, 0);
+        writeBeInt(o, 0);
+        writeBeInt(o, 44100); // timescale = 采样率
+        writeBeInt(o, 88200);
+        writeBeIntAt(o, mdhdStart, o.size() - mdhdStart);
+
+        int moovEnd = o.size();
+        writeBeIntAt(o, moovStart, moovEnd - moovStart);
+        return o.toByteArray();
+    }
+
+    private static void writeBeInt(ByteArrayOutputStream o, int v) {
+        o.write((v >>> 24) & 0xFF);
+        o.write((v >>> 16) & 0xFF);
+        o.write((v >>> 8) & 0xFF);
+        o.write(v & 0xFF);
+    }
+
+    private static void writeBeIntAt(ByteArrayOutputStream o, int at, int v) {
+        byte[] b = o.toByteArray();
+        b[at] = (byte) ((v >>> 24) & 0xFF);
+        b[at + 1] = (byte) ((v >>> 16) & 0xFF);
+        b[at + 2] = (byte) ((v >>> 8) & 0xFF);
+        b[at + 3] = (byte) (v & 0xFF);
+        // 重建
+        o.reset();
+        o.write(b, 0, b.length);
+    }
+
+    private static void writeAscii(ByteArrayOutputStream o, String s) {
+        for (byte b : s.getBytes(java.nio.charset.StandardCharsets.US_ASCII)) {
+            o.write(b);
+        }
     }
 
     @Test

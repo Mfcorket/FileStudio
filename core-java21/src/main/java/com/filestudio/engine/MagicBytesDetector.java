@@ -129,6 +129,18 @@ public final class MagicBytesDetector {
         if (hasPrefix(head, len, new byte[]{'O', 'g', 'g', 'S'})) {
             return new Detection("ogg", "audio/ogg", 1.0);
         }
+        // AAC ADTS：同步字 0xFFF，层=00（区别于 MP3 的 0xFFE/层=01）
+        if (len >= 2 && (head[0] & 0xFF) == 0xFF && (head[1] & 0xF6) == 0xF0) {
+            return new Detection("aac", "audio/aac", 0.95);
+        }
+        // M4A / MP4：ISO-BMFF ftyp box 位于偏移 4
+        if (len >= 12 && head[4] == 'f' && head[5] == 't' && head[6] == 'y' && head[7] == 'p') {
+            String brand = new String(head, 8, 4, java.nio.charset.StandardCharsets.US_ASCII);
+            if (brand.equals("M4A ") || brand.equals("M4B ")) {
+                return new Detection("m4a", "audio/mp4", 1.0);
+            }
+            return new Detection("mp4", "video/mp4", 0.9);
+        }
         if (hasPrefix(head, len, new byte[]{'P', 'A', 'R', '1'})) {
             return new Detection("parquet", "application/vnd.parquet", 1.0);
         }

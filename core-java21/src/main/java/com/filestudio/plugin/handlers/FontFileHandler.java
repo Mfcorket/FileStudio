@@ -37,7 +37,7 @@ public class FontFileHandler implements FileHandler {
      */
     public FontFileHandler() {}
 
-    private static final Set<String> SUPPORTED = Set.of("ttf", "otf", "woff");
+    private static final Set<String> SUPPORTED = Set.of("ttf", "otf", "woff", "woff2");
 
     @Override
     public String getExtension() {
@@ -85,6 +85,8 @@ public class FontFileHandler implements FileHandler {
         if (info.fontName() != null) meta.put("fontName", info.fontName());
         if (info.version() != null) meta.put("version", info.version());
         if (info.postScriptName() != null) meta.put("postScriptName", info.postScriptName());
+        if (info.numTables() > 0) meta.put("numTables", info.numTables());
+        if (info.totalSfntSize() > 0) meta.put("totalSfntSize", info.totalSfntSize());
 
         return new Document(path, mimeFor(info.format()), info.format(), "", meta,
                 file.length(), getEditCapability());
@@ -114,7 +116,8 @@ public class FontFileHandler implements FileHandler {
     // ---- 内部 ----
 
     private record FontInfo(String format, int unitsPerEm, int weight,
-                          String fontName, String version, String postScriptName) {}
+                          String fontName, String version, String postScriptName,
+                          int numTables, long totalSfntSize) {}
 
     private static String extensionOf(String name) {
         int dot = name.lastIndexOf('.');
@@ -127,10 +130,11 @@ public class FontFileHandler implements FileHandler {
             try (InputStream in = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
                 int n = in.read(head);
                 if (n < 4) return false;
-                // TTF: 0x00010000, OTF: "OTTO", WOFF: "wOFF"
+                // TTF: 0x00010000, OTF: "OTTO", WOFF: "wOFF", WOFF2: "wOF2"
                 return (head[0] == 0x00 && head[1] == 0x01 && head[2] == 0x00 && head[3] == 0x00)
                         || (head[0] == 'O' && head[1] == 'T' && head[2] == 'T' && head[3] == 'O')
-                        || (head[0] == 'w' && head[1] == 'O' && head[2] == 'F' && head[3] == 'F');
+                        || (head[0] == 'w' && head[1] == 'O' && head[2] == 'F'
+                        && (head[3] == 'F' || head[3] == '2'));
             }
         } catch (Exception e) {
             return false;
@@ -143,43 +147,119 @@ public class FontFileHandler implements FileHandler {
             byte[] data = Files.readAllBytes(path);
             if (data.length < 12) throw new FileStudioException("Truncated font header");
             String format = detectFormat(data);
-            int numTables = beShort(data, 4);
+            switch (format) {
+                case "woff2" -> {
+                    // WOFF2 表目录使用 Brotli 压缩，JDK 无 Brotli 解码器；
+                    // 头部仍含 flavor / 版本 / 总展开大小，可安全提取。
+                    return parseWoff2Header(data);
+                }
+                default -> {
+                    // ttf / otf / woff：表目录可直接读取
+                    int numTables = beShort(data, 4); // sfnt 与 WOFF 头部 offset 相同
+                    int unitsPerEm = 0;
+                    int weight = 0;
+                    String fontName = null;
+                    String version = null;
+                    String postScriptName = null;
+                    long totalSfntSize = 0;
 
-            int unitsPerEm = 0;
-            int weight = 0;
-            String fontName = null;
-            String version = null;
-            String postScriptName = null;
+                    if ("woff".equals(format)) {
+                        // WOFF 头：flavor(4) length(4) numTables(2) reserved(2) totalSfntSize(4) ...
+                        numTables = beShort(data, 12);
+                        totalSfntSize = beInt(data, 16) & 0xFFFFFFFFL;
+                        // 表记录从偏移 44 开始，每条 20 字节：
+                        // tag(4) offset(4) compLength(4) origLength(4) origChecksum(4)
+                        for (int i = 0; i < numTables; i++) {
+                            int rec = 44 + i * 20;
+                            if (rec + 20 > data.length) break;
+                            String tag = new String(data, rec, 4, StandardCharsets.US_ASCII);
+                            int offset = beInt(data, rec + 4);
+                            int compLength = beInt(data, rec + 8);
+                            int origLength = beInt(data, rec + 12);
+                            byte[] table = woffTable(data, offset, compLength, origLength);
+                            if (table == null) continue;
+                            if ("name".equals(tag)) {
+                                fontName = extractName(table, 4);
+                                version = extractName(table, 5);
+                                postScriptName = extractName(table, 6);
+                            } else if ("head".equals(tag) && table.length >= 18) {
+                                unitsPerEm = beShort(table, 18);
+                            } else if ("OS/2".equals(tag) && table.length >= 6) {
+                                weight = beShort(table, 4);
+                            }
+                        }
+                    } else {
+                        for (int i = 0; i < numTables; i++) {
+                            int rec = 12 + i * 16;
+                            if (rec + 16 > data.length) break;
+                            String tag = new String(data, rec, 4, StandardCharsets.US_ASCII);
+                            int offset = beInt(data, rec + 8);
+                            int length = beInt(data, rec + 12);
 
-            for (int i = 0; i < numTables; i++) {
-                int rec = 12 + i * 16;
-                if (rec + 16 > data.length) break;
-                String tag = new String(data, rec, 4, StandardCharsets.US_ASCII);
-                int offset = beInt(data, rec + 8);
-                int length = beInt(data, rec + 12);
-
-                if ("name".equals(tag) && offset + length <= data.length) {
-                    byte[] nameTable = new byte[length];
-                    System.arraycopy(data, offset, nameTable, 0, length);
-                    fontName = extractName(nameTable, 4);
-                    version = extractName(nameTable, 5);
-                    postScriptName = extractName(nameTable, 6);
-                } else if ("head".equals(tag) && offset + 18 <= data.length) {
-                    unitsPerEm = beShort(data, offset + 18);
-                } else if ("OS/2".equals(tag) && offset + 6 <= data.length) {
-                    weight = beShort(data, offset + 4);
+                            if ("name".equals(tag) && offset + length <= data.length) {
+                                byte[] nameTable = new byte[length];
+                                System.arraycopy(data, offset, nameTable, 0, length);
+                                fontName = extractName(nameTable, 4);
+                                version = extractName(nameTable, 5);
+                                postScriptName = extractName(nameTable, 6);
+                            } else if ("head".equals(tag) && offset + 18 <= data.length) {
+                                unitsPerEm = beShort(data, offset + 18);
+                            } else if ("OS/2".equals(tag) && offset + 6 <= data.length) {
+                                weight = beShort(data, offset + 4);
+                            }
+                        }
+                    }
+                    return new FontInfo(format, unitsPerEm, weight, fontName, version,
+                            postScriptName, numTables, totalSfntSize);
                 }
             }
-            return new FontInfo(format, unitsPerEm, weight, fontName, version, postScriptName);
         } catch (IOException e) {
             throw new FileStudioException("Failed reading font: " + path, e);
         }
+    }
+
+    /** 解包 WOFF 表数据（可能是 zlib 压缩）。压缩时为 origLength 大。 */
+    private static byte[] woffTable(byte[] data, int offset, int compLength, int origLength) {
+        if (offset < 0 || compLength < 0 || origLength < 0
+                || offset + compLength > data.length) {
+            return null;
+        }
+        byte[] comp = new byte[compLength];
+        System.arraycopy(data, offset, comp, 0, compLength);
+        if (compLength >= origLength) {
+            // 未压缩（或相同长度）：直接取 origLength（可能 <= compLength，截断到 origLength）
+            int n = Math.min(origLength, compLength);
+            byte[] out = new byte[n];
+            System.arraycopy(comp, 0, out, 0, n);
+            return out;
+        }
+        try {
+            var inflater = new java.util.zip.Inflater();
+            inflater.setInput(comp);
+            byte[] out = new byte[Math.max(origLength, 0)];
+            int n = inflater.inflate(out);
+            inflater.end();
+            byte[] trimmed = new byte[n];
+            System.arraycopy(out, 0, trimmed, 0, n);
+            return trimmed;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    /** 提取 WOFF2 头部可读信息；Broti 目录不展开。 */
+    private static FontInfo parseWoff2Header(byte[] data) {
+        if (data.length < 48) throw new FileStudioException("Truncated WOFF2 header");
+        long totalSfntSize = beInt(data, 16) & 0xFFFFFFFFL;
+        int numTables = beShort(data, 12);
+        return new FontInfo("woff2", 0, 0, null, null, null, numTables, totalSfntSize);
     }
 
     private static String detectFormat(byte[] head) {
         if (head[0] == 0x00 && head[1] == 0x01 && head[2] == 0x00 && head[3] == 0x00) return "ttf";
         if (head[0] == 'O' && head[1] == 'T' && head[2] == 'T' && head[3] == 'O') return "otf";
         if (head[0] == 'w' && head[1] == 'O' && head[2] == 'F' && head[3] == 'F') return "woff";
+        if (head[0] == 'w' && head[1] == 'O' && head[2] == 'F' && head[3] == '2') return "woff2";
         return "ttf";
     }
 
@@ -225,6 +305,7 @@ public class FontFileHandler implements FileHandler {
             case "ttf" -> "font/ttf";
             case "otf" -> "font/otf";
             case "woff" -> "font/woff";
+            case "woff2" -> "font/woff2";
             default -> "font/*";
         };
     }

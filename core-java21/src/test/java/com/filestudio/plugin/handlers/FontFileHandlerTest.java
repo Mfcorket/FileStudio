@@ -111,6 +111,123 @@ class FontFileHandlerTest {
         ttf[rec + 15] = (byte) (length & 0xFF);
     }
 
+    /** 从合成 TTF 构建 WOFF：加 44 字节头 + 20 字节表记录。 */
+    private static byte[] buildWoff(String fontName, String version, String psName,
+                                    int unitsPerEm, int weight) {
+        byte[] ttf = buildTtf(fontName, version, psName, unitsPerEm, weight);
+        // 现有 TTF 中 3 个表：name / head / OS/2
+        int numTables = beShort(ttf, 4);
+        int headerSize = 12 + numTables * 16;
+        byte[] nameTable = slice(ttf, beInt(ttf, 12 + 0 * 16 + 8), beInt(ttf, 12 + 0 * 16 + 12));
+        byte[] headTable = slice(ttf, beInt(ttf, 12 + 1 * 16 + 8), beInt(ttf, 12 + 1 * 16 + 12));
+        byte[] os2Table = slice(ttf, beInt(ttf, 12 + 2 * 16 + 8), beInt(ttf, 12 + 2 * 16 + 12));
+
+        int headerBytes = 44;
+        int tableDirBytes = numTables * 20;
+        int nameOff = headerBytes + tableDirBytes;
+        int headOff = nameOff + nameTable.length;
+        int os2Off = headOff + headTable.length;
+        int totalSfntSize = 12 + numTables * 16 + nameTable.length + headTable.length + os2Table.length;
+
+        byte[] woff = new byte[os2Off + os2Table.length];
+        // WOFF 头
+        woff[0] = 'w'; woff[1] = 'O'; woff[2] = 'F'; woff[3] = 'F';
+        woff[4] = 0x00; woff[5] = 0x01; woff[6] = 0x00; woff[7] = 0x00; // flavor
+        writeBeInt(woff, 8, woff.length);   // length
+        writeBeShort(woff, 12, numTables);  // numTables
+        writeBeInt(woff, 16, totalSfntSize);
+        // 表记录
+        writeWoffRecord(woff, 44, "name", nameOff, nameTable.length);
+        writeWoffRecord(woff, 64, "head", headOff, headTable.length);
+        writeWoffRecord(woff, 84, "OS/2", os2Off, os2Table.length);
+        // 表数据（未压缩）
+        System.arraycopy(nameTable, 0, woff, nameOff, nameTable.length);
+        System.arraycopy(headTable, 0, woff, headOff, headTable.length);
+        System.arraycopy(os2Table, 0, woff, os2Off, os2Table.length);
+        return woff;
+    }
+
+    /** 构建最小 WOFF2 头（48 字节）。目录用 Brotli 压缩，测试只读头部字段。 */
+    private static byte[] buildWoff2Header(int numTables, long totalSfntSize) {
+        byte[] h = new byte[48];
+        h[0] = 'w'; h[1] = 'O'; h[2] = 'F'; h[3] = '2';
+        h[4] = 0x00; h[5] = 0x01; h[6] = 0x00; h[7] = 0x00; // flavor
+        writeBeInt(h, 8, 48);           // length
+        writeBeShort(h, 12, numTables);
+        writeBeInt(h, 16, (int) totalSfntSize);
+        writeBeInt(h, 20, 24);          // totalCompressedSize
+        return h;
+    }
+
+    private static byte[] slice(byte[] b, int off, int len) {
+        byte[] out = new byte[len];
+        System.arraycopy(b, off, out, 0, len);
+        return out;
+    }
+
+    private static void writeWoffRecord(byte[] b, int rec, String tag, int offset, int length) {
+        byte[] tagBytes = tag.getBytes(StandardCharsets.US_ASCII);
+        System.arraycopy(tagBytes, 0, b, rec, 4);
+        writeBeInt(b, rec + 4, offset);   // offset
+        writeBeInt(b, rec + 8, length);   // compLength
+        writeBeInt(b, rec + 12, length);  // origLength
+        writeBeInt(b, rec + 16, 0);       // origChecksum
+    }
+
+    private static int beShort(byte[] b, int off) {
+        return ((b[off] & 0xFF) << 8) | (b[off + 1] & 0xFF);
+    }
+
+    private static int beInt(byte[] b, int off) {
+        return ((b[off] & 0xFF) << 24) | ((b[off + 1] & 0xFF) << 16)
+                | ((b[off + 2] & 0xFF) << 8) | (b[off + 3] & 0xFF);
+    }
+
+    private static void writeBeShort(byte[] b, int off, int v) {
+        b[off] = (byte) ((v >> 8) & 0xFF);
+        b[off + 1] = (byte) (v & 0xFF);
+    }
+
+    private static void writeBeInt(byte[] b, int off, int v) {
+        b[off] = (byte) ((v >> 24) & 0xFF);
+        b[off + 1] = (byte) ((v >> 16) & 0xFF);
+        b[off + 2] = (byte) ((v >> 8) & 0xFF);
+        b[off + 3] = (byte) (v & 0xFF);
+    }
+
+    @Test
+    void parsesWoffMetadata(@TempDir Path dir) throws IOException {
+        Path p = dir.resolve("font.woff");
+        Files.write(p, buildWoff("Woff Sans", "WOFF 1.0", "WoffSans", 1000, 400));
+
+        Document doc = handler.parse(p.toFile());
+        assertEquals("font/woff", doc.getMimeType());
+        assertEquals("woff", doc.getMetadata().get("format"));
+        assertEquals("Woff Sans", doc.getMetadata().get("fontName"));
+        assertEquals(1000, doc.getMetadata().get("unitsPerEm"));
+        assertEquals(400, doc.getMetadata().get("weight"));
+        assertEquals(3, doc.getMetadata().get("numTables"));
+    }
+
+    @Test
+    void parsesWoff2Header(@TempDir Path dir) throws IOException {
+        Path p = dir.resolve("font.woff2");
+        Files.write(p, buildWoff2Header(5, 40000));
+
+        Document doc = handler.parse(p.toFile());
+        assertEquals("font/woff2", doc.getMimeType());
+        assertEquals("woff2", doc.getMetadata().get("format"));
+        assertEquals(5, doc.getMetadata().get("numTables"));
+        assertEquals(40000L, doc.getMetadata().get("totalSfntSize"));
+    }
+
+    @Test
+    void woff2IsDetectedByMagic(@TempDir Path dir) throws IOException {
+        Path p = dir.resolve("noext2");
+        Files.write(p, buildWoff2Header(1, 100));
+        assertTrue(handler.canHandle(p.toFile()));
+    }
+
     @Test
     void declaresFontFormat() {
         assertEquals("ttf", handler.getExtension());

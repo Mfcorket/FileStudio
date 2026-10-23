@@ -93,9 +93,9 @@
 | mp3 | audio/mpeg | VIEW_ONLY | MP3 |
 | wav | audio/wav | VIEW_ONLY | WAV |
 | flac | audio/flac | VIEW_ONLY | FLAC |
-| aac | audio/aac | VIEW_ONLY | AAC |
+| aac | audio/aac | VIEW_ONLY | AAC（ADTS）\[内置\] AudioFileHandler 采样率/声道/比特率/时长 |
 | ogg | audio/ogg | VIEW_ONLY | OGG |
-| m4a | audio/mp4 | VIEW_ONLY | M4A |
+| m4a | audio/mp4 | VIEW_ONLY | M4A \[内置\] AudioFileHandler ftyp 品牌/moov 时长/采样率 |
 
 ## 8. 视频类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
@@ -127,10 +127,10 @@
 ## 11. 字体类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |
 |--------|------|------|------|
-| ttf | font/ttf | VIEW_ONLY | TrueType |
-| otf | font/otf | VIEW_ONLY | OpenType |
-| woff | font/woff | VIEW_ONLY | WOFF |
-| woff2 | font/woff2 | VIEW_ONLY | WOFF2 |
+| ttf | font/ttf | VIEW_ONLY | TrueType \[内置\] FontFileHandler |
+| otf | font/otf | VIEW_ONLY | OpenType \[内置\] 同一处理器 |
+| woff | font/woff | VIEW_ONLY | WOFF \[内置\] 44 字节头、zlib 表解压、name/head/OS-2 |
+| woff2 | font/woff2 | VIEW_ONLY | WOFF2 \[内置\] 头部字段 numTables/totalSfntSize（表目录 Brotli 压缩，不展开） |
 
 ## 12. 证书/密钥类（VIEW_ONLY）
 | 扩展名 | MIME | 编辑 | 说明 |

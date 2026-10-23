@@ -18,7 +18,7 @@ import java.util.Set;
 /**
  * 音频格式处理器：从文件头解析时长、采样率、声道、位深等元数据。
  *
- * <p>支持：WAV / FLAC / MP3 / OGG。
+ * <p>支持：WAV / FLAC / MP3 / OGG / AAC(ADTS) / M4A。
  * VIEW_ONLY 能力——音频不可作为文本编辑。
  *
  * <p>实现：
@@ -27,6 +27,8 @@ import java.util.Set;
  *   <li>FLAC：解析 STREAMINFO 元数据块</li>
  *   <li>MP3：扫描帧头估算时长（无 Xing 头时）</li>
  *   <li>OGG：解析 Vorbis 标识头</li>
+ *   <li>AAC：解析 ADTS 帧头（采样率索引/声道/比特率）</li>
+ *   <li>M4A：解析 MP4 ftyp 品牌 + moov/mvhd/mdhd（时长与采样率）</li>
  * </ul>
  */
 public class AudioFileHandler implements FileHandler {
@@ -36,7 +38,8 @@ public class AudioFileHandler implements FileHandler {
      */
     public AudioFileHandler() {}
 
-    private static final Set<String> SUPPORTED = Set.of("wav", "flac", "mp3", "ogg", "oga");
+    private static final Set<String> SUPPORTED =
+            Set.of("wav", "flac", "mp3", "ogg", "oga", "aac", "m4a", "m4b");
 
     @Override
     public String getExtension() {
@@ -163,6 +166,8 @@ public class AudioFileHandler implements FileHandler {
                 case "flac" -> parseFlac(h);
                 case "mp3" -> parseMp3(h, fileSize);
                 case "ogg", "oga" -> parseOgg(h);
+                case "aac" -> parseAac(h, fileSize);
+                case "m4a", "m4b" -> parseM4a(h);
                 default -> null;
             };
         } catch (IndexOutOfBoundsException e) {
@@ -271,6 +276,132 @@ public class AudioFileHandler implements FileHandler {
         return sampleRate > 0 ? new AudioInfo(0, sampleRate, channels, 0, 0) : null;
     }
 
+    /**
+     * 解析 AAC ADTS 帧头。
+     *
+     * <p>ADTS 头：同步字 0xFFF（12 位），随后是 ID/层/保护位，然后是
+     * profile、采样率索引、声道配置与 13 位帧长。这里取第一帧头部参数，
+     * 用「每帧 1024 采样」估算总时长。
+     */
+    static AudioInfo parseAac(byte[] h, long fileSize) {
+        if (h.length < 7) return null;
+        if ((h[0] & 0xFF) != 0xFF || (h[1] & 0xF6) != 0xF0) return null; // 同步 0xFFF，层=00
+        // 采样率索引：第 2 字节 bit3-6；声道配置：第 2 字节 bit0 + 第 3 字节 bit7-8
+        int srIndex = (h[2] >> 2) & 0x0F;
+        int[] sampleRates = {96000, 88200, 64000, 48000, 44100,
+                32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350};
+        if (srIndex >= sampleRates.length) return null;
+        int sampleRate = sampleRates[srIndex];
+        int channels = ((h[2] & 0x01) << 2) | ((h[3] & 0xC0) >> 6);
+        // 帧长 13 位：第 3 字节 bit2-3 + 第 4 字节全 + 第 5 字节 bit7-5
+        int frameLength = ((h[3] & 0x03) << 11)
+                | ((h[4] & 0xFF) << 3)
+                | ((h[5] & 0xE0) >> 5);
+        if (frameLength <= 0) return null;
+        // 每帧 1024 采样；估算事件时长：大概帧数 × 每帧时长
+        long totalFrames = fileSize / Math.max(1, frameLength);
+        double duration = totalFrames * 1024.0 / sampleRate;
+        // 比特率：帧长(字节) × 8 × 采样率 / 1024，再转 kbps
+        int bitrate = (int) ((frameLength * 8L * sampleRate + 511) / (1024L * 1000));
+        return new AudioInfo(duration, sampleRate, channels, 0, bitrate);
+    }
+
+    /**
+     * 解析 M4A：MP4 容器，读 ftyp 品牌、moov/mvhd（时长）与 mdhd（采样率）。
+     * 简单遍历 box 层级，防护越界。
+     */
+    static AudioInfo parseM4a(byte[] h) {
+        if (h.length < 12) return null;
+        if (h[4] != 'f' || h[5] != 't' || h[6] != 'y' || h[7] != 'p') return null;
+        String brand = new String(h, 8, 4, java.nio.charset.StandardCharsets.US_ASCII).trim();
+        int sampleRate = 0;
+        int channels = 0;
+        double duration = 0;
+        int pos = 0;
+        // 先定位 moov
+        Integer moov = findBox(h, 0, "moov");
+        if (moov != null) {
+            // mvhd 在 moov 一级
+            Integer mvhd = findBox(h, moov + 8, "mvhd");
+            if (mvhd != null) {
+                int v = h[mvhd + 8] & 0xFF;
+                if (v == 1) {
+                    if (mvhd + 8 + 32 > h.length) return null;
+                    int timescale = beInt(h, mvhd + 8 + 20);
+                    long dur = beLong(h, mvhd + 8 + 24);
+                    if (timescale > 0) duration = (double) dur / timescale;
+                } else {
+                    if (mvhd + 8 + 20 > h.length) return null;
+                    int timescale = beInt(h, mvhd + 8 + 12);
+                    int dur = beInt(h, mvhd + 8 + 16);
+                    if (timescale > 0) duration = (double) dur / timescale;
+                }
+            }
+            // mdhd 在 moov/trak/mdia 下，采样率即 timescale
+            Integer mdhd = findNestedBox(h, moov + 8, "mdhd", 0);
+            if (mdhd != null) {
+                int v = h[mdhd + 8] & 0xFF;
+                if (v == 1) {
+                    if (mdhd + 8 + 24 > h.length) return null;
+                    sampleRate = beInt(h, mdhd + 8 + 20);
+                } else {
+                    if (mdhd + 8 + 16 > h.length) return null;
+                    sampleRate = beInt(h, mdhd + 8 + 12);
+                }
+            }
+        }
+        AudioInfo info = new AudioInfo(duration, sampleRate, channels, 0, 0);
+        return info.durationSeconds() > 0 || info.sampleRate() > 0 ? info : null;
+    }
+
+    /** 在当前层级查找名为 type 的 box，返回其起始偏移。 */
+    private static Integer findBox(byte[] h, int start, String type) {
+        int pos = start;
+        while (pos + 8 <= h.length) {
+            int size = beInt(h, pos);
+            if (size < 8 || pos + size > h.length) break;
+            String t = new String(h, pos + 4, 4, java.nio.charset.StandardCharsets.US_ASCII);
+            if (type.equals(t)) {
+                return pos;
+            }
+            pos += size;
+        }
+        return null;
+    }
+
+    /** 递归嵌套查找（如 moov→trak→mdia→mdhd），限深度防递归过深。 */
+    private static Integer findNestedBox(byte[] h, int start, String type, int depth) {
+        if (depth > 6) return null;
+        int pos = start;
+        while (pos + 8 <= h.length) {
+            int size = beInt(h, pos);
+            if (size < 8 || pos + size > h.length) break;
+            String t = new String(h, pos + 4, 4, java.nio.charset.StandardCharsets.US_ASCII);
+            if (type.equals(t)) {
+                return pos;
+            }
+            Integer nested = findNestedBox(h, pos + 8, type, depth + 1);
+            if (nested != null) {
+                return nested;
+            }
+            pos += size;
+        }
+        return null;
+    }
+
+    private static int beInt(byte[] h, int off) {
+        return ((h[off] & 0xFF) << 24) | ((h[off + 1] & 0xFF) << 16)
+                | ((h[off + 2] & 0xFF) << 8) | (h[off + 3] & 0xFF);
+    }
+
+    private static long beLong(byte[] h, int off) {
+        long v = 0;
+        for (int i = 0; i < 8; i++) {
+            v = (v << 8) | (h[off + i] & 0xFFL);
+        }
+        return v;
+    }
+
     private static int leInt(byte[] h, int off) {
         return (h[off] & 0xFF) | ((h[off + 1] & 0xFF) << 8)
                 | ((h[off + 2] & 0xFF) << 16) | ((h[off + 3] & 0xFF) << 24);
@@ -294,6 +425,8 @@ public class AudioFileHandler implements FileHandler {
             case "flac" -> "audio/flac";
             case "mp3" -> "audio/mpeg";
             case "ogg", "oga" -> "audio/ogg";
+            case "aac" -> "audio/aac";
+            case "m4a", "m4b" -> "audio/mp4";
             default -> "audio/*";
         };
     }
@@ -304,7 +437,8 @@ public class AudioFileHandler implements FileHandler {
             try {
                 var d = com.filestudio.engine.MagicBytesDetector.detect(file.toPath());
                 String ext = d.extension();
-                return ext.equals("flac") || ext.equals("ogg") || ext.equals("mp3");
+                return ext.equals("flac") || ext.equals("ogg") || ext.equals("mp3")
+                        || ext.equals("aac") || ext.equals("m4a");
             } catch (RuntimeException e) {
                 return false;
             }
