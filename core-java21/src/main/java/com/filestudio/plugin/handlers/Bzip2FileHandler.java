@@ -25,6 +25,9 @@ import java.util.Map;
  */
 public class Bzip2FileHandler implements FileHandler {
 
+    /** BZIP2 处理器。 */
+    public Bzip2FileHandler() {}
+
     private static final byte[] MAGIC = {'B', 'Z', 'h'};
 
     private static final long MAGIC_BLOCK_RANDOM = 0x314159265359L;

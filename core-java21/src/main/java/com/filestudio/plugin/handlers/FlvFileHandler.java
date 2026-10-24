@@ -23,6 +23,9 @@ import java.util.Set;
  */
 public class FlvFileHandler implements FileHandler {
 
+    /** FLV 处理器。 */
+    public FlvFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("flv");
 
     /** 头对象 + 首 Tag 头（含 header size 域）。 */

@@ -81,7 +81,14 @@ public class SevenZipFileHandler implements FileHandler {
     private static final int ID_NAME = 0x11;
     private static final int ID_ENCODED_HEADER = 0x17;
 
-    /** 条目描述。 */
+    /**
+ * 7z 归档条目。
+ *
+ * @param name        条目名称
+ * @param size        条目大小（字节）
+ * @param isDirectory 是否为目录
+ * @param crc         CRC32 校验值
+ */
     public record Entry(String name, long size, boolean isDirectory, long crc) {}
 
     @Override

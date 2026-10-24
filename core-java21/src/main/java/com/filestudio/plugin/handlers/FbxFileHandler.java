@@ -33,6 +33,9 @@ import java.util.regex.Pattern;
  */
 public class FbxFileHandler implements FileHandler {
 
+    /** FBX 处理器。 */
+    public FbxFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("fbx");
 
     /** 二进制 FBX 的魔数前缀（含尾部空格与三字节控制符）。 */

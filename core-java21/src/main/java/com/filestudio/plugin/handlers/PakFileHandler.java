@@ -30,6 +30,9 @@ import java.util.Set;
  */
 public class PakFileHandler implements FileHandler {
 
+    /** PAK 处理器。 */
+    public PakFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("pak");
 
     /** Unreal Pak 魔数。 */

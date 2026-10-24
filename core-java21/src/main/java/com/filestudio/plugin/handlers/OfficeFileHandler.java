@@ -40,6 +40,9 @@ import java.util.zip.ZipFile;
  */
 public class OfficeFileHandler implements FileHandler {
 
+    /** Office 文档处理器。 */
+    public OfficeFileHandler() {}
+
     /** 本处理器覆盖的扩展名。getExtension() 返回主扩展名 docx。 */
     private static final Set<String> SUPPORTED = Set.of("docx", "xlsx", "pptx", "odt");
 

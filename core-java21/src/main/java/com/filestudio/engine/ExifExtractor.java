@@ -42,6 +42,7 @@ public final class ExifExtractor {
     /**
      * 从文件提取 EXIF。
      *
+     * @param file 目标文件路径
      * @return EXIF 标签表；没有 EXIF 或无法解析时返回空表
      */
     public static Map<String, Object> extract(Path file) {
@@ -487,7 +488,12 @@ public final class ExifExtractor {
         };
     }
 
-    /** 方向值对应的含义。 */
+    /**
+     * 方向值对应的含义。
+     *
+     * @param value EXIF 方向值（1-8）
+     * @return 对应的中文描述；未知值返回数字字符串
+     */
     public static String orientationName(long value) {
         return switch ((int) value) {
             case 1 -> "正常";

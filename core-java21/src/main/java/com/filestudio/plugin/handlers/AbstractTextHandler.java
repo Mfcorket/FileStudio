@@ -32,8 +32,11 @@ import java.util.Map;
  */
 public abstract class AbstractTextHandler implements FileHandler {
 
-    /** 超出该阈值的内容不载入内存，仅填充元数据，避免 OOM。 */
+    /** 超出该阈值的对象不载入内存，仅填充元数据，避免 OOM。 */
     protected static final long MAX_IN_MEMORY_BYTES = 16L * 1024 * 1024;
+
+    /** 供子类使用的默认无参构造。 */
+    protected AbstractTextHandler() {}
 
     @Override
     public boolean canHandle(File file) {

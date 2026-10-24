@@ -17,6 +17,9 @@ import java.util.regex.Pattern;
  */
 public class UnityFileHandler extends AbstractTextHandler {
 
+    /** Unity 场景/资源处理器。 */
+    public UnityFileHandler() {}
+
     private static final Pattern OBJECT = Pattern.compile("(?m)^--- !u!(\\d+) &");
     private static final Pattern CLASS_IDS = Pattern.compile("(?m)^--- !u!(\\d+) &");
 

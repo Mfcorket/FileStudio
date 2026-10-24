@@ -25,6 +25,9 @@ import java.util.Set;
  */
 public class WmvFileHandler implements FileHandler {
 
+    /** Windows Media / ASF 处理器。 */
+    public WmvFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("wmv", "asf", "wma");
 
     /** ASF 头对象 GUID：3026B275-8E66-CF11-A6D9-00AA0062CE6C */

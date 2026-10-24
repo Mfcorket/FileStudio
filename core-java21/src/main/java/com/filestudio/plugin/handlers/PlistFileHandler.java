@@ -9,13 +9,16 @@ import java.util.regex.Pattern;
 /**
  * Apple 属性列表（Property List）处理器。
  *
- * <p>支持 XML 编码的 plist（{@code <?xml ...?><plist><dict>...）与 OpenStep/NeXT
- * 文本格式。元数据：键数量、值类型统计、顶层元素类型与 plist 版本。
+ * <p>支持 XML 编码的 plist（{@code <?xml ...?><plist><dict>...</dict></plist>}）
+ * 与 OpenStep/NeXT 文本格式。元数据：键数量、值类型统计、顶层元素类型与 plist 版本。
  *
  * <p>FULL 编辑能力——内容原样回写。<b>不支持二进制 plist（bplist）</b>，
  * 遇到时 {@code canHandle} 返回 false。
  */
 public class PlistFileHandler extends AbstractTextHandler {
+
+    /** Plist 文档处理器。 */
+    public PlistFileHandler() {}
 
     private static final Pattern DICT_KEY = Pattern.compile("<key>([^<]+)</key>");
     private static final Pattern ELEMENT_REAL = Pattern.compile("<real>([^<]+)</real>");

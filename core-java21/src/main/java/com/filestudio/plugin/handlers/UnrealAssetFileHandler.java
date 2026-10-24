@@ -29,6 +29,9 @@ import java.util.Set;
  */
 public class UnrealAssetFileHandler implements FileHandler {
 
+    /** Unreal Engine 资源处理器。 */
+    public UnrealAssetFileHandler() {}
+
     private static final Set<String> SUPPORTED = Set.of("uasset");
 
     /** Unreal 4.20+ 包魔数（4 字节，字节序为 9E 2A 83 C1）。 */
