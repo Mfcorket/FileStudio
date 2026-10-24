@@ -8,6 +8,9 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.13")
     runtimeOnly("ch.qos.logback:logback-classic:1.5.6")
 
+    // Brotli 解码器，用于 WOFF2 字体表目录解压
+    implementation("org.brotli:dec:0.1.2")
+
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")

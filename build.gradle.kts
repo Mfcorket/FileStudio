@@ -1,13 +1,6 @@
 group = "com.filestudio"
 version = "0.1.0"
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
 subprojects {
     plugins.withId("java") {
         extensions.configure<JavaPluginExtension> {

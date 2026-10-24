@@ -15,11 +15,14 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.Inflater;
+
+import org.brotli.dec.BrotliInputStream;
 
 /**
  * 字体文件处理器：从 TTF/OTF 文件头提取字体名、版本、字重、unitsPerEm 等元数据。
  *
- * <p>支持：TTF / OTF / WOFF。
+ * <p>支持：TTF / OTF / WOFF / WOFF2。
  * VIEW_ONLY 能力——字体不可作为文本编辑。
  *
  * <p>实现：
@@ -28,6 +31,7 @@ import java.util.Set;
  *   <li>从 name 表提取字体名（ID 4）、版本（ID 5）、PostScript 名（ID 6）</li>
  *   <li>从 head 表提取 unitsPerEm</li>
  *   <li>从 OS/2 表提取字重（usWeightClass）</li>
+ *   <li>WOFF2: 解压 Brotli 压缩的表目录并提取元数据</li>
  * </ul>
  */
 public class FontFileHandler implements FileHandler {
@@ -56,7 +60,7 @@ public class FontFileHandler implements FileHandler {
 
     @Override
     public String getDescription() {
-        return "Font file (TTF/OTF/WOFF)";
+        return "Font file (TTF/OTF/WOFF/WOFF2)";
     }
 
     @Override
@@ -149,13 +153,11 @@ public class FontFileHandler implements FileHandler {
             String format = detectFormat(data);
             switch (format) {
                 case "woff2" -> {
-                    // WOFF2 表目录使用 Brotli 压缩，JDK 无 Brotli 解码器；
-                    // 头部仍含 flavor / 版本 / 总展开大小，可安全提取。
                     return parseWoff2Header(data);
                 }
                 default -> {
                     // ttf / otf / woff：表目录可直接读取
-                    int numTables = beShort(data, 4); // sfnt 与 WOFF 头部 offset 相同
+                    int numTables = beShort(data, 4);
                     int unitsPerEm = 0;
                     int weight = 0;
                     String fontName = null;
@@ -169,90 +171,203 @@ public class FontFileHandler implements FileHandler {
                         totalSfntSize = beInt(data, 16) & 0xFFFFFFFFL;
                         // 表记录从偏移 44 开始，每条 20 字节：
                         // tag(4) offset(4) compLength(4) origLength(4) origChecksum(4)
+                        int tableDirOffset = 44;
                         for (int i = 0; i < numTables; i++) {
-                            int rec = 44 + i * 20;
-                            if (rec + 20 > data.length) break;
-                            String tag = new String(data, rec, 4, StandardCharsets.US_ASCII);
-                            int offset = beInt(data, rec + 4);
-                            int compLength = beInt(data, rec + 8);
-                            int origLength = beInt(data, rec + 12);
-                            byte[] table = woffTable(data, offset, compLength, origLength);
-                            if (table == null) continue;
-                            if ("name".equals(tag)) {
-                                fontName = extractName(table, 4);
-                                version = extractName(table, 5);
-                                postScriptName = extractName(table, 6);
-                            } else if ("head".equals(tag) && table.length >= 18) {
-                                unitsPerEm = beShort(table, 18);
-                            } else if ("OS/2".equals(tag) && table.length >= 6) {
-                                weight = beShort(table, 4);
+                            int entryOffset = tableDirOffset + i * 20;
+                            if (entryOffset + 20 > data.length) break;
+                            int tag = beInt(data, entryOffset);
+                            int offset = beInt(data, entryOffset + 4);
+                            int compLength = beInt(data, entryOffset + 8);
+                            int origLength = beInt(data, entryOffset + 12);
+                            // 提取表标签
+                            String tagStr = new String(new byte[]{
+                                (byte)((tag >> 24) & 0xFF),
+                                (byte)((tag >> 16) & 0xFF),
+                                (byte)((tag >> 8) & 0xFF),
+                                (byte)(tag & 0xFF)
+                            });
+                            if (compLength == origLength) {
+                                if (offset + origLength <= data.length) {
+                                    byte[] tableData = new byte[origLength];
+                                    System.arraycopy(data, offset, tableData, 0, origLength);
+                                    if ("name".equals(tagStr) && tableData.length > 0) {
+                                        fontName = extractName(tableData, 4);
+                                        version = extractName(tableData, 5);
+                                        postScriptName = extractName(tableData, 6);
+                                    } else if ("head".equals(tagStr) && tableData.length >= 18) {
+                                        unitsPerEm = beShort(tableData, 18);
+                                    } else if ("OS/2".equals(tagStr) && tableData.length >= 6) {
+                                        weight = beShort(tableData, 4);
+                                    }
+                                }
                             }
                         }
                     } else {
+                        // TTF/OTF: 表记录从偏移 12 开始，每条 16 字节
+                        int tableDirOffset = 12;
                         for (int i = 0; i < numTables; i++) {
-                            int rec = 12 + i * 16;
-                            if (rec + 16 > data.length) break;
-                            String tag = new String(data, rec, 4, StandardCharsets.US_ASCII);
-                            int offset = beInt(data, rec + 8);
-                            int length = beInt(data, rec + 12);
-
-                            if ("name".equals(tag) && offset + length <= data.length) {
-                                byte[] nameTable = new byte[length];
-                                System.arraycopy(data, offset, nameTable, 0, length);
-                                fontName = extractName(nameTable, 4);
-                                version = extractName(nameTable, 5);
-                                postScriptName = extractName(nameTable, 6);
-                            } else if ("head".equals(tag) && offset + 18 <= data.length) {
-                                unitsPerEm = beShort(data, offset + 18);
-                            } else if ("OS/2".equals(tag) && offset + 6 <= data.length) {
-                                weight = beShort(data, offset + 4);
+                            int entryOffset = tableDirOffset + i * 16;
+                            if (entryOffset + 16 > data.length) break;
+                            int tag = beInt(data, entryOffset);
+                            int offset = beInt(data, entryOffset + 8);
+                            int length = beInt(data, entryOffset + 12);
+                            String tagStr = new String(new byte[]{
+                                (byte)((tag >> 24) & 0xFF),
+                                (byte)((tag >> 16) & 0xFF),
+                                (byte)((tag >> 8) & 0xFF),
+                                (byte)(tag & 0xFF)
+                            });
+                            if (offset + length <= data.length) {
+                                byte[] tableData = new byte[length];
+                                System.arraycopy(data, offset, tableData, 0, length);
+                                if ("name".equals(tagStr) && tableData.length > 0) {
+                                    fontName = extractName(tableData, 4);
+                                    version = extractName(tableData, 5);
+                                    postScriptName = extractName(tableData, 6);
+                                } else if ("head".equals(tagStr) && tableData.length >= 18) {
+                                    unitsPerEm = beShort(tableData, 18);
+                                } else if ("OS/2".equals(tagStr) && tableData.length >= 6) {
+                                    weight = beShort(tableData, 4);
+                                }
                             }
                         }
                     }
-                    return new FontInfo(format, unitsPerEm, weight, fontName, version,
-                            postScriptName, numTables, totalSfntSize);
+                    return new FontInfo(format, unitsPerEm, weight, fontName, version, postScriptName, numTables, totalSfntSize);
                 }
             }
         } catch (IOException e) {
-            throw new FileStudioException("Failed reading font: " + path, e);
+            throw new FileStudioException("Failed to read font file: " + e.getMessage(), e);
         }
     }
 
-    /** 解包 WOFF 表数据（可能是 zlib 压缩）。压缩时为 origLength 大。 */
-    private static byte[] woffTable(byte[] data, int offset, int compLength, int origLength) {
-        if (offset < 0 || compLength < 0 || origLength < 0
-                || offset + compLength > data.length) {
-            return null;
-        }
-        byte[] comp = new byte[compLength];
-        System.arraycopy(data, offset, comp, 0, compLength);
-        if (compLength >= origLength) {
-            // 未压缩（或相同长度）：直接取 origLength（可能 <= compLength，截断到 origLength）
-            int n = Math.min(origLength, compLength);
-            byte[] out = new byte[n];
-            System.arraycopy(comp, 0, out, 0, n);
-            return out;
-        }
-        try {
-            var inflater = new java.util.zip.Inflater();
-            inflater.setInput(comp);
-            byte[] out = new byte[Math.max(origLength, 0)];
-            int n = inflater.inflate(out);
-            inflater.end();
-            byte[] trimmed = new byte[n];
-            System.arraycopy(out, 0, trimmed, 0, n);
-            return trimmed;
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    /** 提取 WOFF2 头部可读信息；Broti 目录不展开。 */
+    /**
+     * 解析 WOFF2 头部并解压 Brotli 压缩的表目录。
+     * WOFF2 结构：
+     * - 4 字节 signature "wOF2"
+     * - 4 字节 flavor
+     * - 4 字节 length
+     * - 4 字节 numTables
+     * - 4 字节 reserved
+     * - 4 字节 totalSfntSize
+     * - 4 字节 totalCompressedSize
+     * - 2 字节 majorVersion, 2 字节 minorVersion
+     * - 4 字节 metaOffset, 4 字节 metaLength, 4 字节 metaOrigLength
+     * - 4 字节 privOffset, 4 字节 privLength
+     * 然后是表目录（压缩），每条：tag(4) flags(1) index(3) offset(varint) length(varint)
+     * 最后是压缩的表数据
+     */
     private static FontInfo parseWoff2Header(byte[] data) {
-        if (data.length < 48) throw new FileStudioException("Truncated WOFF2 header");
-        long totalSfntSize = beInt(data, 16) & 0xFFFFFFFFL;
+        if (data.length < 48) {
+            throw new FileStudioException("Truncated WOFF2 header");
+        }
+        // WOFF2 头部结构：
+        // 0-3: signature "wOF2"
+        // 4-7: flavor
+        // 8-11: length
+        // 12-13: numTables (uint16)
+        // 14-15: reserved (uint16)
+        // 16-19: totalSfntSize (uint32)
+        // 20-23: totalCompressedSize (uint32)
+        // 24-25: majorVersion (uint16)
+        // 26-27: minorVersion (uint16)
+        // 28-31: metaOffset (uint32)
+        // 32-35: metaLength (uint32)
+        // 36-39: metaOrigLength (uint32)
+        // 40-43: privOffset (uint32)
+        // 44-47: privLength (uint32)
+        // 表目录从偏移 48 开始
         int numTables = beShort(data, 12);
-        return new FontInfo("woff2", 0, 0, null, null, null, numTables, totalSfntSize);
+        long totalSfntSize = beInt(data, 16) & 0xFFFFFFFFL;
+        long totalCompressedSize = beInt(data, 20) & 0xFFFFFFFFL;
+
+        // 如果只有头部（无压缩表目录），直接返回基本信息
+        if (data.length < 48 + totalCompressedSize) {
+            return new FontInfo("woff2", 0, 0, null, null, null, numTables, totalSfntSize);
+        }
+
+        // 解压表目录
+        byte[] tableDirCompressed = new byte[(int) totalCompressedSize];
+        System.arraycopy(data, 48, tableDirCompressed, 0, tableDirCompressed.length);
+
+        byte[] tableDirData;
+        try (java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(tableDirCompressed);
+             BrotliInputStream brotliIn = new BrotliInputStream(bis)) {
+            tableDirData = brotliIn.readAllBytes();
+        } catch (IOException e) {
+            throw new FileStudioException("Failed to decompress WOFF2 table directory: " + e.getMessage(), e);
+        }
+
+        // 解析表目录
+        int pos = 0;
+        int unitsPerEm = 0;
+        int weight = 0;
+        String fontName = null;
+        String version = null;
+        String postScriptName = null;
+        int[] posRef = new int[]{0};
+
+        for (int i = 0; i < numTables; i++) {
+            if (posRef[0] + 4 > tableDirData.length) break;
+            int tag = beInt(tableDirData, posRef[0]);
+            posRef[0] += 4;
+            int flags = tableDirData[posRef[0]++] & 0xFF;
+            // index (3 bytes)
+            posRef[0] += 3;
+            // offset and length are variable-length encoded
+            long offset = readVarInt(tableDirData, posRef);
+            long length = readVarInt(tableDirData, posRef);
+            if (posRef[0] < 0) break;
+
+            // 读取表标签
+            String tagStr = String.format("%04X", tag).replace(' ', '0');
+
+            // 读取表数据（需要解压）
+            if (offset >= 0 && length > 0 && offset + length <= data.length) {
+                byte[] compressedTable = new byte[(int) length];
+                System.arraycopy(data, 48 + tableDirCompressed.length + (int) offset, compressedTable, 0, (int) length);
+
+                byte[] tableData;
+                try (java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(compressedTable);
+                     BrotliInputStream brotliIn = new BrotliInputStream(bis)) {
+                    tableData = brotliIn.readAllBytes();
+                } catch (IOException e) {
+                    // 解压失败，跳过此表
+                    continue;
+                }
+
+                if ("name".equals(tagStr) && tableData.length > 0) {
+                    fontName = extractName(tableData, 4);
+                    version = extractName(tableData, 5);
+                    postScriptName = extractName(tableData, 6);
+                } else if ("head".equals(tagStr) && tableData.length >= 18) {
+                    unitsPerEm = beShort(tableData, 18);
+                } else if ("OS/2".equals(tagStr) && tableData.length >= 6) {
+                    weight = beShort(tableData, 4);
+                } else if ("post".equals(tagStr) && tableData.length >= 4) {
+                    // post table 可能包含版本信息
+                }
+            }
+        }
+
+        return new FontInfo("woff2", unitsPerEm, weight, fontName, version, postScriptName, numTables, totalSfntSize);
+    }
+
+    /** 读取 WOFF2 变长整数 (base-128)。通过 int[] 传递位置引用。 */
+    private static long readVarInt(byte[] data, int[] pos) {
+        long value = 0;
+        int shift = 0;
+        int p = pos[0];
+        for (int i = 0; i < 10; i++) {
+            if (p >= data.length) break;
+            int b = data[p++] & 0xFF;
+            value |= (long)(b & 0x7F) << shift;
+            if ((b & 0x80) == 0) {
+                break;
+            }
+            shift += 7;
+        }
+        pos[0] = p;
+        return value;
     }
 
     private static String detectFormat(byte[] head) {
