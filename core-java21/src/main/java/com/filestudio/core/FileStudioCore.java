@@ -86,7 +86,8 @@ public final class FileStudioCore {
     public FileStudioCore() {}
 
     private final PluginManager pluginManager = new PluginManager();
-    private final DocumentParser parser = new DocumentParser(pluginManager);
+    private final DocumentCache documentCache = new DocumentCache();
+    private final DocumentParser parser = new DocumentParser(pluginManager, documentCache);
     private volatile boolean initialized;
 
     /**
@@ -159,7 +160,7 @@ public final class FileStudioCore {
     }
 
     /**
-     * 解析文件路径为统一文档模型。
+     * 解析文件路径为统一文档模型（带缓存）。
      *
      * @param path 文件路径
      * @return 文档实例
@@ -167,11 +168,11 @@ public final class FileStudioCore {
      */
     public Document parseFile(String path) {
         ensureInit();
-        return parser.parse(new File(path));
+        return parser.parse(new File(path), documentCache);
     }
 
     /**
-     * 解析文件为统一文档模型。
+     * 解析文件为统一文档模型（带缓存）。
      *
      * @param file 目标文件
      * @return 文档实例
@@ -179,7 +180,7 @@ public final class FileStudioCore {
      */
     public Document parseFile(File file) {
         ensureInit();
-        return parser.parse(file);
+        return parser.parse(file, documentCache);
     }
 
     /**
@@ -236,7 +237,7 @@ public final class FileStudioCore {
      */
     public EditorSessionManager newSessionManager() {
         ensureInit();
-        return new EditorSessionManager(parser);
+        return new EditorSessionManager(parser, documentCache);
     }
 
     /**
@@ -257,9 +258,19 @@ public final class FileStudioCore {
         return parser;
     }
 
+    /**
+     * 获取文档缓存，便于高级用法（手动清理、调整大小等）。
+     *
+     * @return 文档缓存实例
+     */
+    public DocumentCache getDocumentCache() {
+        return documentCache;
+    }
+
     /** 释放核心资源。 */
     public synchronized void shutdown() {
         pluginManager.shutdown();
+        documentCache.clear();
         initialized = false;
     }
 

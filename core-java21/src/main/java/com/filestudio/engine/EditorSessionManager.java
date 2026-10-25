@@ -1,6 +1,7 @@
 package com.filestudio.engine;
 
 import com.filestudio.core.Document;
+import com.filestudio.core.DocumentCache;
 import com.filestudio.core.FileStudioException;
 
 import java.io.File;
@@ -19,6 +20,7 @@ import java.util.Optional;
 public final class EditorSessionManager {
 
     private final DocumentParser parser;
+    private final DocumentCache cache;
     private final Map<String, EditorSession> sessions = new LinkedHashMap<>();
     private String activeKey;
 
@@ -28,7 +30,18 @@ public final class EditorSessionManager {
      * @param parser 文档解析器，用于打开文件
      */
     public EditorSessionManager(DocumentParser parser) {
+        this(parser, null);
+    }
+
+    /**
+     * 构造会话管理器（带缓存）。
+     *
+     * @param parser 文档解析器，用于打开文件
+     * @param cache  文档缓存，{@code null} 表示不缓存
+     */
+    public EditorSessionManager(DocumentParser parser, DocumentCache cache) {
         this.parser = parser;
+        this.cache = cache;
     }
 
     /**
@@ -47,7 +60,7 @@ public final class EditorSessionManager {
             activeKey = key;
             return existing;
         }
-        Document doc = parser.parse(file);
+        Document doc = parser.parse(file, cache);
         EditorEngine editor = new EditorEngine(parser);
         editor.open(doc);
         EditorSession session = new EditorSession(file, editor, new BookmarkManager());
