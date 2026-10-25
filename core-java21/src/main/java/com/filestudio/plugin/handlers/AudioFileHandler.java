@@ -39,7 +39,7 @@ public class AudioFileHandler implements FileHandler {
     public AudioFileHandler() {}
 
     private static final Set<String> SUPPORTED =
-            Set.of("wav", "flac", "mp3", "ogg", "oga", "aac", "m4a", "m4b");
+            Set.of("wav", "flac", "mp3", "ogg", "oga", "opus", "aac", "m4a", "m4b");
 
     @Override
     public String getExtension() {
@@ -166,6 +166,7 @@ public class AudioFileHandler implements FileHandler {
                 case "flac" -> parseFlac(h);
                 case "mp3" -> parseMp3(h, fileSize);
                 case "ogg", "oga" -> parseOgg(h);
+                case "opus" -> parseOpus(h, fileSize);
                 case "aac" -> parseAac(h, fileSize);
                 case "m4a", "m4b" -> parseM4a(h);
                 default -> null;
@@ -274,6 +275,50 @@ public class AudioFileHandler implements FileHandler {
         int sampleRate = leInt(h, 28);
         int channels = h[11] & 0xFF;
         return sampleRate > 0 ? new AudioInfo(0, sampleRate, channels, 0, 0) : null;
+    }
+
+    /**
+     * 解析 Opus：Ogg 容器中的 Opus 音频。
+     * OpusHead 结构：magic(8) + version(1) + channels(1) + pre-skip(2) + sample_rate(4) +
+     * output_gain(2) + mapping_family(1) + [coupling...]
+     * 采样率固定 48000Hz，但可被重采样。
+     */
+    static AudioInfo parseOpus(byte[] h, long fileSize) {
+        if (h.length < 27) return null;
+        if (h[0] != 'O' || h[1] != 'g' || h[2] != 'g' || h[3] != 'S') return null;
+        // 查找 OpusHead
+        int pos = 27; // 跳过 Ogg 页面头
+        int numSegments = h[26] & 0xFF;
+        pos += numSegments; // 跳过段表
+        if (pos + 8 > h.length) return null;
+        // 检查 OpusHead magic
+        byte[] opusSig = "OpusHead".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        boolean isOpus = true;
+        for (int i = 0; i < 8; i++) {
+            if (h[pos + i] != opusSig[i]) {
+                isOpus = false;
+                break;
+            }
+        }
+        if (!isOpus) return null;
+        pos += 8;
+        if (pos + 1 + 1 + 2 + 4 > h.length) return null;
+        int version = h[pos++] & 0xFF;
+        int channels = h[pos++] & 0xFF;
+        int preSkip = leShort(h, pos);
+        pos += 2;
+        int sampleRate = leInt(h, pos); // 通常为 48000
+        pos += 4;
+        // 估算时长：基于文件大小和比特率
+        // Opus 帧大小可变，简化估算
+        double duration = 0;
+        int bitrate = 0;
+        if (sampleRate > 0) {
+            // 粗略估算：每秒 ~128 kbps (典型 Opus 比特率)
+            bitrate = 128;
+            duration = (double) fileSize * 8 / (bitrate * 1000);
+        }
+        return new AudioInfo(duration, sampleRate, channels, 0, bitrate);
     }
 
     /**
@@ -425,6 +470,7 @@ public class AudioFileHandler implements FileHandler {
             case "flac" -> "audio/flac";
             case "mp3" -> "audio/mpeg";
             case "ogg", "oga" -> "audio/ogg";
+            case "opus" -> "audio/opus";
             case "aac" -> "audio/aac";
             case "m4a", "m4b" -> "audio/mp4";
             default -> "audio/*";
@@ -438,7 +484,7 @@ public class AudioFileHandler implements FileHandler {
                 var d = com.filestudio.engine.MagicBytesDetector.detect(file.toPath());
                 String ext = d.extension();
                 return ext.equals("flac") || ext.equals("ogg") || ext.equals("mp3")
-                        || ext.equals("aac") || ext.equals("m4a");
+                        || ext.equals("aac") || ext.equals("m4a") || ext.equals("opus");
             } catch (RuntimeException e) {
                 return false;
             }

@@ -127,6 +127,11 @@ public final class MagicBytesDetector {
             return new Detection("flac", "audio/flac", 1.0);
         }
         if (hasPrefix(head, len, new byte[]{'O', 'g', 'g', 'S'})) {
+            // 尝试区分 Opus 与 Vorbis：检查首个页面的识别头
+            String oggExt = detectOggSubtype(head, len);
+            if (oggExt != null) {
+                return new Detection(oggExt, "audio/ogg", 0.95);
+            }
             return new Detection("ogg", "audio/ogg", 1.0);
         }
         // AAC ADTS：同步字 0xFFF，层=00（区别于 MP3 的 0xFFE/层=01）
@@ -227,5 +232,80 @@ public final class MagicBytesDetector {
             sb.append((char) b);
         }
         return sb.toString();
+    }
+
+    /**
+     * 尝试区分 Ogg 子类型（Opus/Vorbis/FLAC/Speex 等）。
+     * 读取第一个 Ogg 页面，解析段表，检查识别包头。
+     */
+    private static String detectOggSubtype(byte[] head, int len) {
+        // Ogg 页面结构：capture_pattern(4) + version(1) + header_type(1) + granule_position(8)
+        // + bitstream_serial(4) + page_sequence(4) + page_checksum(4) + page_segments(1)
+        // + segment_table[page_segments] + segment_data...
+        if (len < 27) return null;
+        if (head[0] != 'O' || head[1] != 'g' || head[2] != 'g' || head[3] != 'S') return null;
+        int version = head[4] & 0xFF;
+        if (version != 0) return null;
+        int headerType = head[5] & 0xFF;
+        if (headerType != 2) return null; // 只关心首页
+        // 跳过 granule_position(8) + bitstream_serial(4) + page_sequence(4) + page_checksum(4) = 20
+        int pos = 6 + 20;
+        if (pos >= len) return null;
+        int numSegments = head[pos++] & 0xFF;
+        if (pos + numSegments > len) return null;
+        // 计算第一个段的数据起始位置
+        int segmentDataStart = pos + numSegments;
+        if (segmentDataStart >= len) return null;
+        // 第一个段的长度
+        int firstSegLen = head[pos] & 0xFF;
+        if (segmentDataStart + firstSegLen > len) return null;
+        int identStart = segmentDataStart;
+        // 检查识别头
+        if (firstSegLen >= 8) {
+            // OpusHead: "OpusHead" (8字节)
+            if (len >= identStart + 8) {
+                boolean isOpus = true;
+                byte[] opusSig = "OpusHead".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+                for (int i = 0; i < 8; i++) {
+                    if (head[identStart + i] != opusSig[i]) {
+                        isOpus = false;
+                        break;
+                    }
+                }
+                if (isOpus) return "opus";
+            }
+            // Vorbis: 0x01 + "vorbis"
+            if (firstSegLen >= 7 && head[identStart] == 1) {
+                if (len >= identStart + 7) {
+                    boolean isVorbis = true;
+                    byte[] vorbisSig = "vorbis".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+                    for (int i = 0; i < 6; i++) {
+                        if (head[identStart + 1 + i] != vorbisSig[i]) {
+                            isVorbis = false;
+                            break;
+                        }
+                    }
+                    if (isVorbis) return "ogg"; // Vorbis 仍归类为 ogg
+                }
+            }
+            // FLAC in Ogg: 0x7F + "FLAC"
+            if (firstSegLen >= 5 && head[identStart] == (byte) 0x7F) {
+                if (len >= identStart + 5) {
+                    if (head[identStart + 1] == 'F' && head[identStart + 2] == 'L'
+                            && head[identStart + 3] == 'A' && head[identStart + 4] == 'C') {
+                        return "flac";
+                    }
+                }
+            }
+            // Speex: "Speex   " (8字节)
+            if (firstSegLen >= 8) {
+                if (head[identStart] == 'S' && head[identStart + 1] == 'p'
+                        && head[identStart + 2] == 'e' && head[identStart + 3] == 'e'
+                        && head[identStart + 4] == 'x') {
+                    return "spx";
+                }
+            }
+        }
+        return null;
     }
 }
