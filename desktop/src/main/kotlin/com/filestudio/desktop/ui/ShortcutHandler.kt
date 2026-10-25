@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -19,19 +21,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.unit.dp
 import com.filestudio.desktop.Keymap
 import com.filestudio.desktop.Shortcut
 import com.filestudio.desktop.ShortcutAction
 import com.filestudio.desktop.ShortcutDispatcher
+import java.io.File
 
 /**
  * 全局快捷键入口。
@@ -48,7 +51,7 @@ fun ShortcutHandler(
 ) {
     Column(
         modifier = modifier.onPreviewKeyEvent { event ->
-            if (event.type != KeyEventType.KeyDown) {
+            if (event::class.simpleName != "KeyDown") {
                 return@onPreviewKeyEvent false
             }
             dispatcher.handle(
@@ -123,30 +126,38 @@ private fun OpenFileDialog(dispatcher: ShortcutDispatcher) {
     val state = dispatcher.state
     if (!state.showOpenDialog) return
 
-    var path by remember { mutableStateOf("") }
-
     AlertDialog(
         onDismissRequest = { state.showOpenDialog = false },
         title = { Text("打开文件") },
         text = {
-            OutlinedTextField(
-                value = path,
-                onValueChange = { path = it },
-                label = { Text("文件路径") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+            Text(
+                "点击按钮选择文件...",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(16.dp),
             )
         },
         confirmButton = {
-            TextButton(
-                enabled = path.isNotBlank(),
-                onClick = {
-                    state.openPathArg(path.trim())
-                    path = ""
-                    state.showOpenDialog = false
-                },
-            ) {
-                Text("打开")
+            TextButton(onClick = {
+                // 使用 Swing JFileChooser
+                val chooser = JFileChooser(File(System.getProperty("user.home"))).apply {
+                    fileFilter = FileNameExtensionFilter(
+                        "所有文件",
+                        *arrayOf("txt", "md", "json", "xml", "yaml", "yml", "ini", "cfg", "conf", "properties", "log",
+                            "java", "kt", "py", "js", "ts", "go", "rs", "cpp", "c", "h", "cs", "rb", "php", "swift", "scala", "lua", "sh", "ps1", "sql",
+                            "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg", "ico", "tif", "tiff", "heic", "avif",
+                            "pdf", "docx", "xlsx", "pptx", "odt", "epub",
+                            "zip", "7z", "rar", "tar", "gz", "bz2", "xz", "lz4", "zst")
+                    )
+                    dialogTitle = "选择要打开的文件"
+                    fileSelectionMode = JFileChooser.FILES_ONLY
+                }
+                if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    val file = chooser.selectedFile
+                    state.openPathArg(file.absolutePath)
+                }
+                state.showOpenDialog = false
+            }) {
+                Text("选择文件")
             }
         },
         dismissButton = {
