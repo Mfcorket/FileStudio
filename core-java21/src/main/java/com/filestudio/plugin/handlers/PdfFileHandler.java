@@ -50,6 +50,23 @@ public class PdfFileHandler implements FileHandler {
     private static final Pattern STREAM_PATTERN = Pattern.compile("stream\\s*([\\s\\S]*?)\\s*endstream");
     private static final Pattern CONTENTS_PATTERN = Pattern.compile("/Contents\\s+(\\d+\\s+\\d+\\s+R|\\d+\\s+\\d+\\s+obj|\\\\[[^\\]]+\\\\]|\\d+\\s+\\d+\\s+R)");
 
+    // AcroForm 表单字段模式
+    private static final Pattern ACROFORM_PATTERN = Pattern.compile("/AcroForm\\s*<<([^>]*>>)");
+    private static final Pattern FIELD_PATTERN = Pattern.compile("/FT\\s*/(\\w+)");
+    private static final Pattern FIELD_NAME_PATTERN = Pattern.compile("/T\\s*\\(([^)]+)\\)");
+    private static final Pattern FIELD_VALUE_PATTERN = Pattern.compile("/V\\s*\\(([^)]*)\\)");
+    private static final Pattern FIELD_RECT_PATTERN = Pattern.compile("/Rect\\s*\\[([^\\]]+)\\]");
+    private static final Pattern FIELD_FLAGS_PATTERN = Pattern.compile("/Ff\\s*(\\d+)");
+    private static final Pattern FIELD_OPTIONS_PATTERN = Pattern.compile("/Opt\\s*\\[([^\\]]+)\\]");
+
+    // 注解模式
+    private static final Pattern ANNOT_PATTERN = Pattern.compile("/Annots\\s*\\[([^\\]]*\\])");
+    private static final Pattern ANNOT_SUBTYPE_PATTERN = Pattern.compile("/Subtype\\s*/(\\w+)");
+    private static final Pattern ANNOT_RECT_PATTERN = Pattern.compile("/Rect\\s*\\[([^\\]]+)\\]");
+    private static final Pattern ANNOT_CONTENTS_PATTERN = Pattern.compile("/Contents\\s*\\(([^)]*)\\)");
+    private static final Pattern ANNOT_URI_PATTERN = Pattern.compile("/URI\\s*\\(([^)]+)\\)");
+    private static final Pattern ANNOT_NM_PATTERN = Pattern.compile("/NM\\s*\\(([^)]*)\\)");
+
     @Override
     public String getExtension() {
         return "pdf";
@@ -122,6 +139,20 @@ public class PdfFileHandler implements FileHandler {
         if (mediaBox != null) {
             meta.put("pageWidth", Double.parseDouble(mediaBox[2].trim()) - Double.parseDouble(mediaBox[0].trim()));
             meta.put("pageHeight", Double.parseDouble(mediaBox[3].trim()) - Double.parseDouble(mediaBox[1].trim()));
+        }
+
+        // AcroForm 表单字段提取
+        List<Map<String, Object>> formFields = extractFormFields(text);
+        if (!formFields.isEmpty()) {
+            meta.put("formFieldCount", formFields.size());
+            meta.put("formFields", formFields);
+        }
+
+        // 注解提取
+        List<Map<String, Object>> annotations = extractAnnotations(text);
+        if (!annotations.isEmpty()) {
+            meta.put("annotationCount", annotations.size());
+            meta.put("annotations", annotations);
         }
 
         // 提取文本内容
@@ -291,6 +322,279 @@ public class PdfFileHandler implements FileHandler {
         return sb.toString();
     }
 
+    private static String[] extractMediaBox(String text) {
+        Matcher m = MEDIA_BOX_PATTERN.matcher(text);
+        if (m.find()) {
+            return m.group(1).split("\\s+");
+        }
+        return null;
+    }
+
+    /**
+     * 提取 AcroForm 表单字段。
+     *
+     * @param text PDF 文本内容
+     * @return 字段信息列表，每个字段包含名称、类型、值、矩形区域等
+     */
+    private static List<Map<String, Object>> extractFormFields(String text) {
+        List<Map<String, Object>> fields = new ArrayList<>();
+
+        // 查找 AcroForm 字典
+        Matcher acroFormMatcher = ACROFORM_PATTERN.matcher(text);
+        if (!acroFormMatcher.find()) {
+            return fields;
+        }
+
+        String acroFormDict = acroFormMatcher.group(1);
+        // 查找 Fields 数组
+        Pattern fieldsArrayPattern = Pattern.compile("/Fields\\s*\\[([^\\]]*)\\]");
+        Matcher fieldsMatcher = fieldsArrayPattern.matcher(acroFormDict);
+        if (!fieldsMatcher.find()) {
+            // 尝试在整个文档中查找字段引用
+            extractFieldReferences(text, fields);
+            return fields;
+        }
+
+        String fieldsArray = fieldsMatcher.group(1);
+        // 解析字段引用：每个引用格式为 "N 0 R"
+        Pattern refPattern = Pattern.compile("(\\d+)\\s+0\\s+R");
+        Matcher refMatcher = refPattern.matcher(fieldsArray);
+        List<String> fieldRefs = new ArrayList<>();
+        while (refMatcher.find()) {
+            fieldRefs.add(refMatcher.group(1) + " 0 obj");
+        }
+
+        // 解析每个字段对象
+        for (String fieldObj : fieldRefs) {
+            int objStart = text.indexOf(fieldObj);
+            if (objStart < 0) continue;
+            int objEnd = findObjectEnd(text, objStart);
+            if (objEnd < 0) continue;
+            String fieldDict = text.substring(objStart, objEnd);
+
+            Map<String, Object> field = new LinkedHashMap<>();
+
+            // 字段类型
+            Matcher ftMatcher = FIELD_PATTERN.matcher(fieldDict);
+            if (ftMatcher.find()) {
+                String ft = ftMatcher.group(1);
+                field.put("type", switch (ft) {
+                    case "Tx" -> "text";
+                    case "Btn" -> "button";
+                    case "Ch" -> "choice";
+                    case "Sig" -> "signature";
+                    default -> ft;
+                });
+            }
+
+            // 字段名称
+            Matcher tMatcher = FIELD_NAME_PATTERN.matcher(fieldDict);
+            if (tMatcher.find()) {
+                field.put("name", tMatcher.group(1));
+            }
+
+            // 字段值
+            Matcher vMatcher = FIELD_VALUE_PATTERN.matcher(fieldDict);
+            if (vMatcher.find()) {
+                field.put("value", vMatcher.group(1));
+            }
+
+            // 矩形区域
+            Matcher rectMatcher = FIELD_RECT_PATTERN.matcher(fieldDict);
+            if (rectMatcher.find()) {
+                field.put("rect", rectMatcher.group(1).trim());
+            }
+
+            // 标志位
+            Matcher ffMatcher = FIELD_FLAGS_PATTERN.matcher(fieldDict);
+            if (ffMatcher.find()) {
+                field.put("flags", ffMatcher.group(1));
+            }
+
+            // 选项（用于 choice 字段）
+            Matcher optMatcher = FIELD_OPTIONS_PATTERN.matcher(fieldDict);
+            if (optMatcher.find()) {
+                String opts = optMatcher.group(1);
+                List<String> options = new ArrayList<>();
+                Matcher optItemMatcher = Pattern.compile("\\(([^)]+)\\)").matcher(opts);
+                while (optItemMatcher.find()) {
+                    options.add(optItemMatcher.group(1));
+                }
+                if (!options.isEmpty()) {
+                    field.put("options", options);
+                }
+            }
+
+            if (!field.isEmpty()) {
+                fields.add(field);
+            }
+        }
+
+        return fields;
+    }
+
+    private static void extractFieldReferences(String text, List<Map<String, Object>> fields) {
+        // 在整个文档中查找字段对象
+        Pattern fieldObjPattern = Pattern.compile("(\\d+\\s+0\\s+obj\\s*<<[^>]*?/FT\\s*/\\w+[^>]*?>>\\s*endobj)");
+        Matcher matcher = fieldObjPattern.matcher(text);
+        while (matcher.find()) {
+            String fieldDict = matcher.group(1);
+            Map<String, Object> field = new LinkedHashMap<>();
+
+            Matcher ftMatcher = FIELD_PATTERN.matcher(fieldDict);
+            if (ftMatcher.find()) {
+                String ft = ftMatcher.group(1);
+                field.put("type", switch (ft) {
+                    case "Tx" -> "text";
+                    case "Btn" -> "button";
+                    case "Ch" -> "choice";
+                    case "Sig" -> "signature";
+                    default -> ft;
+                });
+            }
+
+            Matcher tMatcher = FIELD_NAME_PATTERN.matcher(fieldDict);
+            if (tMatcher.find()) {
+                field.put("name", tMatcher.group(1));
+            }
+
+            Matcher vMatcher = FIELD_VALUE_PATTERN.matcher(fieldDict);
+            if (vMatcher.find()) {
+                field.put("value", vMatcher.group(1));
+            }
+
+            Matcher rectMatcher = FIELD_RECT_PATTERN.matcher(fieldDict);
+            if (rectMatcher.find()) {
+                field.put("rect", rectMatcher.group(1).trim());
+            }
+
+            if (!field.isEmpty()) {
+                fields.add(field);
+            }
+        }
+    }
+
+    private static int findObjectEnd(String text, int start) {
+        int depth = 0;
+        for (int i = start; i < text.length(); i++) {
+            if (text.charAt(i) == '<' && i + 1 < text.length() && text.charAt(i + 1) == '<') {
+                depth++;
+                i++;
+            } else if (text.charAt(i) == '>' && i + 1 < text.length() && text.charAt(i + 1) == '>') {
+                depth--;
+                i++;
+                if (depth == 0) {
+                    // 检查是否是 endobj
+                    int j = i + 1;
+                    while (j < text.length() && Character.isWhitespace(text.charAt(j))) j++;
+                    if (j + 5 <= text.length() && text.substring(j, j + 5).equals("endobj")) {
+                        return j + 5;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * 提取 PDF 注解（链接、高亮、文本注释等）。
+     *
+     * @param text PDF 文本内容
+     * @return 注解信息列表
+     */
+    private static List<Map<String, Object>> extractAnnotations(String text) {
+        List<Map<String, Object>> annotations = new ArrayList<>();
+
+        Matcher annotMatcher = ANNOT_PATTERN.matcher(text);
+        if (!annotMatcher.find()) {
+            return annotations;
+        }
+
+        String annotArray = annotMatcher.group(1);
+        // 解析注解引用
+        Pattern refPattern = Pattern.compile("(\\d+)\\s+0\\s+R");
+        Matcher refMatcher = refPattern.matcher(annotArray);
+        List<String> annotRefs = new ArrayList<>();
+        while (refMatcher.find()) {
+            annotRefs.add(refMatcher.group(1) + " 0 obj");
+        }
+
+        for (String annotObj : annotRefs) {
+            int objStart = text.indexOf(annotObj);
+            if (objStart < 0) continue;
+            int objEnd = findObjectEnd(text, objStart);
+            if (objEnd < 0) continue;
+            String annotDict = text.substring(objStart, objEnd);
+
+            Map<String, Object> annot = new LinkedHashMap<>();
+
+            // 子类型
+            Matcher subMatcher = ANNOT_SUBTYPE_PATTERN.matcher(annotDict);
+            if (subMatcher.find()) {
+                String sub = subMatcher.group(1);
+                annot.put("subtype", switch (sub) {
+                    case "Link" -> "link";
+                    case "Text" -> "text";
+                    case "Highlight" -> "highlight";
+                    case "Underline" -> "underline";
+                    case "Squiggly" -> "squiggly";
+                    case "StrikeOut" -> "strikeout";
+                    case "FreeText" -> "freetext";
+                    case "Line" -> "line";
+                    case "Square" -> "square";
+                    case "Circle" -> "circle";
+                    case "Polygon" -> "polygon";
+                    case "PolyLine" -> "polyline";
+                    case "Caret" -> "caret";
+                    case "Ink" -> "ink";
+                    case "Stamp" -> "stamp";
+                    case "Popup" -> "popup";
+                    case "FileAttachment" -> "fileattachment";
+                    case "Sound" -> "sound";
+                    case "Movie" -> "movie";
+                    case "Widget" -> "widget";
+                    case "Screen" -> "screen";
+                    case "PrinterMark" -> "printermark";
+                    case "TrapNet" -> "trapnet";
+                    case "Watermark" -> "watermark";
+                    case "3D" -> "3d";
+                    case "Redact" -> "redact";
+                    default -> sub.toLowerCase();
+                });
+            }
+
+            // 矩形区域
+            Matcher rectMatcher = ANNOT_RECT_PATTERN.matcher(annotDict);
+            if (rectMatcher.find()) {
+                annot.put("rect", rectMatcher.group(1).trim());
+            }
+
+            // 内容文本
+            Matcher contentsMatcher = ANNOT_CONTENTS_PATTERN.matcher(annotDict);
+            if (contentsMatcher.find()) {
+                annot.put("contents", contentsMatcher.group(1));
+            }
+
+            // URI (用于链接)
+            Matcher uriMatcher = ANNOT_URI_PATTERN.matcher(annotDict);
+            if (uriMatcher.find()) {
+                annot.put("uri", uriMatcher.group(1));
+            }
+
+            // 名称
+            Matcher nmMatcher = ANNOT_NM_PATTERN.matcher(annotDict);
+            if (nmMatcher.find()) {
+                annot.put("name", nmMatcher.group(1));
+            }
+
+            if (!annot.isEmpty()) {
+                annotations.add(annot);
+            }
+        }
+
+        return annotations;
+    }
+
     // ---- 内部 ----
 
     private static String extensionOf(String name) {
@@ -345,14 +649,6 @@ public class PdfFileHandler implements FileHandler {
         Matcher m = pattern.matcher(text);
         if (m.find()) {
             return m.group(1).trim();
-        }
-        return null;
-    }
-
-    private static String[] extractMediaBox(String text) {
-        Matcher m = MEDIA_BOX_PATTERN.matcher(text);
-        if (m.find()) {
-            return m.group(1).split("\\s+");
         }
         return null;
     }
