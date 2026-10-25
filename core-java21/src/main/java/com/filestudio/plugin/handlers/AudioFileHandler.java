@@ -39,7 +39,7 @@ public class AudioFileHandler implements FileHandler {
     public AudioFileHandler() {}
 
     private static final Set<String> SUPPORTED =
-            Set.of("wav", "flac", "mp3", "ogg", "oga", "opus", "aac", "m4a", "m4b");
+            Set.of("wav", "flac", "mp3", "ogg", "oga", "opus", "aac", "m4a", "m4b", "aiff", "aif", "aifc", "au", "snd");
 
     @Override
     public String getExtension() {
@@ -169,6 +169,8 @@ public class AudioFileHandler implements FileHandler {
                 case "opus" -> parseOpus(h, fileSize);
                 case "aac" -> parseAac(h, fileSize);
                 case "m4a", "m4b" -> parseM4a(h);
+                case "aiff", "aif", "aifc" -> parseAiff(h);
+                case "au", "snd" -> parseAu(h);
                 default -> null;
             };
         } catch (IndexOutOfBoundsException e) {
@@ -399,7 +401,104 @@ public class AudioFileHandler implements FileHandler {
         return info.durationSeconds() > 0 || info.sampleRate() > 0 ? info : null;
     }
 
-    /** 在当前层级查找名为 type 的 box，返回其起始偏移。 */
+    /**
+     * 解析 AIFF/AIFC：Audio Interchange File Format（Apple/SGI）。
+     *
+     * <p>结构：FORM + AIFF/AIFC + 块（COMM 标准块 + SSND 声音数据块等）。
+     * COMM 块：channels(2) + numFrames(4) + sampleSize(2) + sampleRate(10 字节 IEEE 80 位扩展精度浮点数)
+     * AIFC 的 COMM 块额外有 compressionType(4) + compressionName(p-string)。
+     */
+    static AudioInfo parseAiff(byte[] h) {
+        if (h.length < 12) return null;
+        // 检查 FORM + AIFF/AIFC
+        if (h[0] != 'F' || h[1] != 'O' || h[2] != 'R' || h[3] != 'M') return null;
+        if (!(h[8] == 'A' && h[9] == 'I' && h[10] == 'F' &&
+                (h[11] == 'F' || h[11] == 'C'))) return null;
+
+        int pos = 12;
+        int sampleRate = 0;
+        int channels = 0;
+        int bitsPerSample = 0;
+        long numFrames = 0;
+
+        while (pos + 8 <= h.length) {
+            String chunkId = new String(h, pos, 4, java.nio.charset.StandardCharsets.US_ASCII);
+            int chunkSize = beInt(h, pos + 4);
+            if (chunkSize < 0 || pos + 8 + chunkSize > h.length) break;
+
+            if (chunkId.equals("COMM")) {
+                // COMM 块：channels(2) + numFrames(4) + sampleSize(2) + sampleRate(10)
+                if (pos + 8 + 18 <= h.length) {
+                    channels = beShort(h, pos + 8);
+                    numFrames = beInt(h, pos + 10);
+                    bitsPerSample = beShort(h, pos + 14);
+                    // sampleRate 是 10 字节 IEEE 80 位扩展精度，简化：取前 4 字节近似
+                    // 标准 AIFF 的采样率通常存储为整数，这里简化处理
+                    long exp = beShort(h, pos + 16); // 指数部分
+                    long mantissa = beInt(h, pos + 18); // 尾数高 32 位
+                    // 简化：如果 exp 为 16398 (0x400E)，则 mantissa 即为采样率
+                    if (exp == 16398) {
+                        sampleRate = (int) mantissa;
+                    }
+                }
+            } else if (chunkId.equals("SSND")) {
+                // 声音数据块，找到后可以停止（已获取 COMM 信息）
+                if (sampleRate > 0) break;
+            }
+
+            pos += 8 + chunkSize + (chunkSize & 1); // 块对齐到偶数
+        }
+
+        double duration = (sampleRate > 0 && numFrames > 0) ? (double) numFrames / sampleRate : 0;
+        return sampleRate > 0 ? new AudioInfo(duration, sampleRate, channels, bitsPerSample, 0) : null;
+    }
+
+    /**
+     * 解析 AU/SND：Sun/NeXT 音频格式。
+     *
+     * <p>头部 24 字节：magic(4) + dataOffset(4) + dataSize(4) + encoding(4) + sampleRate(4) + channels(4)
+     * 编码：1=μ-law, 2=linear 8bit, 3=linear 16bit, 4=linear 24bit, 5=linear 32bit, 6=float, 7=double, 27=ALaw
+     */
+    static AudioInfo parseAu(byte[] h) {
+        if (h.length < 24) return null;
+        // .snd 魔数：".snd" (0x2E736E64) 或 NEXTSND (0x646E732E)
+        if (!((h[0] == '.' && h[1] == 's' && h[2] == 'n' && h[3] == 'd') ||
+                (h[0] == 'd' && h[1] == 'n' && h[2] == 's' && h[3] == '.'))) {
+            return null;
+        }
+        int dataOffset = beInt(h, 4);
+        int dataSize = beInt(h, 8);
+        int encoding = beInt(h, 12);
+        int sampleRate = beInt(h, 16);
+        int channels = beInt(h, 20);
+
+        if (sampleRate <= 0 || channels <= 0) return null;
+
+        int bitsPerSample = switch (encoding) {
+            case 2 -> 8;   // linear 8bit
+            case 3 -> 16;  // linear 16bit
+            case 4 -> 24;  // linear 24bit
+            case 5 -> 32;  // linear 32bit
+            case 6 -> 32;  // float
+            case 7 -> 64;  // double
+            case 1, 27 -> 8; // μ-law / ALaw
+            default -> 0;
+        };
+
+        double duration = 0;
+        if (dataSize > 0 && sampleRate > 0 && channels > 0 && bitsPerSample > 0) {
+            long frameSize = (long) channels * bitsPerSample / 8;
+            if (frameSize > 0) {
+                duration = (double) dataSize / frameSize / sampleRate;
+            }
+        }
+
+        return new AudioInfo(duration, sampleRate, channels, bitsPerSample, 0);
+    }
+
+    /**
+     * 在当前层级查找名为 type 的 box，返回其起始偏移。
+     */
     private static Integer findBox(byte[] h, int start, String type) {
         int pos = start;
         while (pos + 8 <= h.length) {
@@ -456,6 +555,11 @@ public class AudioFileHandler implements FileHandler {
         return (h[off] & 0xFF) | ((h[off + 1] & 0xFF) << 8);
     }
 
+    private static int beShort(byte[] h, int off) {
+        if (off + 2 > h.length) return 0;
+        return ((h[off] & 0xFF) << 8) | (h[off + 1] & 0xFF);
+    }
+
     private static String formatDuration(double seconds) {
         int total = (int) Math.round(seconds);
         int h = total / 3600;
@@ -473,6 +577,8 @@ public class AudioFileHandler implements FileHandler {
             case "opus" -> "audio/opus";
             case "aac" -> "audio/aac";
             case "m4a", "m4b" -> "audio/mp4";
+            case "aiff", "aif", "aifc" -> "audio/aiff";
+            case "au", "snd" -> "audio/basic";
             default -> "audio/*";
         };
     }
@@ -484,7 +590,8 @@ public class AudioFileHandler implements FileHandler {
                 var d = com.filestudio.engine.MagicBytesDetector.detect(file.toPath());
                 String ext = d.extension();
                 return ext.equals("flac") || ext.equals("ogg") || ext.equals("mp3")
-                        || ext.equals("aac") || ext.equals("m4a") || ext.equals("opus");
+                        || ext.equals("aac") || ext.equals("m4a") || ext.equals("opus")
+                        || ext.equals("aiff") || ext.equals("au");
             } catch (RuntimeException e) {
                 return false;
             }
