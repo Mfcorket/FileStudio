@@ -24,13 +24,19 @@ public final class SyntaxLanguageRegistry {
 
     static {
         register(java());
+        register(kotlin());
         register(python());
         register(javascript());
         register(typescript());
         register(c());
         register(cpp());
+        register(csharp());
         register(go());
         register(rust());
+        register(swift());
+        register(ruby());
+        register(php());
+        register(powershell());
         register(shell());
         register(sql());
         register(json());
@@ -309,6 +315,109 @@ public final class SyntaxLanguageRegistry {
                 Set.of("yaml", "yml"),
                 Set.of("true", "false", "null", "yes", "no", "on", "off", "~"),
                 "#", null, null,
+                new char[]{'"', '\''}, false, null, false);
+    }
+
+    private static SyntaxProfile kotlin() {
+        return new SyntaxProfile("kotlin", "text/x-kotlin",
+                Set.of("kt", "kts"),
+                Set.of(
+                        "abstract", "actual", "annotation", "as", "break", "by", "catch", "class",
+                        "companion", "const", "constructor", "continue", "crossinline", "data",
+                        "delegate", "do", "dynamic", "else", "enum", "expect", "external", "field",
+                        "file", "finally", "for", "fun", "get", "if", "import", "in", "infix",
+                        "inline", "inner", "interface", "internal", "is", "lateinit", "noinline",
+                        "object", "open", "operator", "out", "override", "package", "param",
+                        "private", "property", "protected", "public", "receiver", "reified",
+                        "return", "sealed", "set", "super", "suspend", "tailrec", "this", "throw",
+                        "try", "typealias", "typeof", "val", "var", "vararg", "when", "where",
+                        "while", "yield", "true", "false", "null"
+                ),
+                "//", "/*", "*/",
+                new char[]{'"', '`'}, false, null, false);
+    }
+
+    private static SyntaxProfile csharp() {
+        return new SyntaxProfile("csharp", "text/x-csharp",
+                Set.of("cs", "csx"),
+                Set.of(
+                        "abstract", "as", "base", "bool", "break", "byte", "case", "catch",
+                        "char", "checked", "class", "const", "continue", "decimal", "default",
+                        "delegate", "do", "double", "else", "enum", "event", "explicit",
+                        "extern", "false", "finally", "fixed", "float", "for", "foreach",
+                        "goto", "if", "implicit", "in", "int", "interface", "internal", "is",
+                        "lock", "long", "namespace", "new", "null", "object", "operator",
+                        "out", "override", "params", "private", "protected", "public",
+                        "readonly", "record", "ref", "return", "sbyte", "sealed", "short",
+                        "sizeof", "stackalloc", "static", "string", "struct", "switch",
+                        "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked",
+                        "unsafe", "ushort", "using", "virtual", "void", "volatile", "while"
+                ),
+                "//", "/*", "*/",
+                new char[]{'"', '\''}, true, null, false);
+    }
+
+    private static SyntaxProfile swift() {
+        return new SyntaxProfile("swift", "text/x-swift",
+                Set.of("swift"),
+                Set.of(
+                        "associatedtype", "class", "deinit", "enum", "extension", "fileprivate",
+                        "func", "import", "init", "inout", "internal", "let", "open", "operator",
+                        "private", "protocol", "public", "rethrows", "static", "struct", "subscript",
+                        "typealias", "var", "break", "case", "continue", "default", "defer", "do",
+                        "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return",
+                        "throw", "try", "where", "while", "as", "Any", "AnyObject", "false",
+                        "is", "nil", "self", "Self", "super", "true", "await", "async",
+                        "try!", "try?", "Some", "None"
+                ),
+                "//", "/*", "*/",
+                new char[]{'"'}, false, null, false);
+    }
+
+    private static SyntaxProfile ruby() {
+        return new SyntaxProfile("ruby", "text/x-ruby",
+                Set.of("rb", "rbw", "rake", "gemspec"),
+                Set.of(
+                        "BEGIN", "END", "alias", "and", "begin", "break", "case", "class",
+                        "def", "defined?", "do", "else", "elsif", "end", "ensure", "false",
+                        "for", "if", "in", "module", "next", "nil", "not", "or", "redo",
+                        "rescue", "retry", "return", "self", "super", "then", "true",
+                        "undef", "unless", "until", "when", "while", "yield"
+                ),
+                "#", "=begin", "=end",
+                new char[]{'"', '\''}, false, null, false);
+    }
+
+    private static SyntaxProfile php() {
+        return new SyntaxProfile("php", "text/x-php",
+                Set.of("php", "phtml", "php3", "php4", "php5", "php7", "php8"),
+                Set.of(
+                        "abstract", "and", "array", "as", "break", "callable", "case", "catch",
+                        "class", "clone", "const", "continue", "declare", "default", "die",
+                        "do", "echo", "else", "elseif", "empty", "enddeclare", "endfor",
+                        "endforeach", "endif", "endswitch", "endwhile", "eval", "exit",
+                        "extends", "final", "finally", "for", "foreach", "function", "global",
+                        "goto", "if", "implements", "include", "include_once", "instanceof",
+                        "insteadof", "interface", "isset", "list", "namespace", "new", "or",
+                        "print", "private", "protected", "public", "require", "require_once",
+                        "return", "static", "switch", "throw", "trait", "try", "unset", "use",
+                        "var", "while", "xor", "yield", "true", "false", "null"
+                ),
+                "//", "/*", "*/",
+                new char[]{'"', '\''}, true, null, false);
+    }
+
+    private static SyntaxProfile powershell() {
+        return new SyntaxProfile("powershell", "text/x-powershell",
+                Set.of("ps1", "psm1", "psd1"),
+                Set.of(
+                        "begin", "break", "catch", "class", "continue", "data", "define", "do",
+                        "dynamicparam", "else", "elseif", "end", "enum", "exit", "filter",
+                        "finally", "for", "foreach", "from", "function", "if", "in", "param",
+                        "process", "return", "switch", "throw", "trap", "try", "until", "using",
+                        "var", "while", "true", "false", "null"
+                ),
+                "#", "<#", "#>",
                 new char[]{'"', '\''}, false, null, false);
     }
 
