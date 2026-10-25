@@ -11,6 +11,13 @@ dependencies {
     // Brotli 解码器，用于 WOFF2 字体表目录解压
     implementation("org.brotli:dec:0.1.2")
 
+    // 压缩格式：lz4 / zstd / xz
+    implementation("org.lz4:lz4-java:1.8.1") {
+        exclude(group = "at.yawk.lz4")
+    }
+    implementation("com.github.luben:zstd-jni:1.5.7-24")
+    implementation("org.tukaani:xz:1.12")
+
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")

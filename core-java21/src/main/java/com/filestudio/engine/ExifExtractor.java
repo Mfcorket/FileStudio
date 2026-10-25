@@ -36,6 +36,9 @@ public final class ExifExtractor {
 
     private static final int TAG_EXIF_IFD = 0x8769;
     private static final int TAG_GPS_IFD = 0x8825;
+    private static final int TAG_MAKER_NOTE = 0x927C;
+    private static final int TAG_JPEG_INTERCHANGE_FORMAT = 0x0201; // 缩略图偏移
+    private static final int TAG_JPEG_INTERCHANGE_FORMAT_LENGTH = 0x0202; // 缩略图长度
 
     private ExifExtractor() {}
 
@@ -172,6 +175,8 @@ public final class ExifExtractor {
 
             long exifIfd = -1;
             long gpsIfd = -1;
+            long jpegThumbnailOffset = -1;
+            long jpegThumbnailLength = -1;
 
             for (int i = 0; i < count; i++) {
                 int entry = abs + 2 + i * 12;
@@ -190,6 +195,14 @@ public final class ExifExtractor {
                     gpsIfd = u32(entry + 8);
                     continue;
                 }
+                if (tag == TAG_JPEG_INTERCHANGE_FORMAT) {
+                    jpegThumbnailOffset = u32(entry + 8);
+                    continue;
+                }
+                if (tag == TAG_JPEG_INTERCHANGE_FORMAT_LENGTH) {
+                    jpegThumbnailLength = u32(entry + 8);
+                    continue;
+                }
 
                 Object value = readValue(entry + 8, type, num);
                 if (value == null) {
@@ -204,6 +217,11 @@ public final class ExifExtractor {
                 }
             }
 
+            // MakerNote 在 IFD0 中，按原始字节存储
+            if (out.containsKey("tag_0x927C")) {
+                // 已在 readValue 中作为字节数组处理
+            }
+
             if (exifIfd > 0) {
                 out.putAll(readIfd(exifIfd, depth + 1));
             }
@@ -212,6 +230,19 @@ public final class ExifExtractor {
                 gps.keySet().stream()
                         .filter(k -> k.startsWith("GPS_"))
                         .forEach(k -> out.put("gps_" + k.substring(4).toLowerCase(), gps.get(k)));
+            }
+            // 缩略图信息
+            if (jpegThumbnailOffset > 0 && jpegThumbnailLength > 0) {
+                // 偏移是相对于 TIFF 头的
+                long thumbAbs = base + jpegThumbnailOffset;
+                if (thumbAbs >= 0 && thumbAbs + jpegThumbnailLength <= d.length) {
+                    out.put("thumbnailOffset", jpegThumbnailOffset);
+                    out.put("thumbnailLength", jpegThumbnailLength);
+                    // 提取 JPEG 缩略图数据
+                    byte[] thumb = new byte[(int) jpegThumbnailLength];
+                    System.arraycopy(d, (int) thumbAbs, thumb, 0, (int) jpegThumbnailLength);
+                    out.put("thumbnailData", thumb);
+                }
             }
             return out;
         }
@@ -483,6 +514,30 @@ public final class ExifExtractor {
             case 0x0004 -> "GPS_Longitude";
             case 0x0005 -> "GPS_AltitudeRef";
             case 0x0006 -> "GPS_Altitude";
+            case 0x0007 -> "GPS_TimeStamp";
+            case 0x0008 -> "GPS_Satellites";
+            case 0x0009 -> "GPS_Status";
+            case 0x000A -> "GPS_MeasureMode";
+            case 0x000B -> "GPS_DOP";
+            case 0x000C -> "GPS_SpeedRef";
+            case 0x000D -> "GPS_Speed";
+            case 0x000E -> "GPS_TrackRef";
+            case 0x000F -> "GPS_Track";
+            case 0x0010 -> "GPS_ImgDirectionRef";
+            case 0x0011 -> "GPS_ImgDirection";
+            case 0x0012 -> "GPS_MapDatum";
+            case 0x0013 -> "GPS_DestLatitudeRef";
+            case 0x0014 -> "GPS_DestLatitude";
+            case 0x0015 -> "GPS_DestLongitudeRef";
+            case 0x0016 -> "GPS_DestLongitude";
+            case 0x0017 -> "GPS_DestBearingRef";
+            case 0x0018 -> "GPS_DestBearing";
+            case 0x0019 -> "GPS_DestDistanceRef";
+            case 0x001A -> "GPS_DestDistance";
+            case 0x001B -> "GPS_ProcessingMethod";
+            case 0x001C -> "GPS_AreaInformation";
+            case 0x001E -> "GPS_Differential";
+            case 0x001F -> "GPS_HPositioningError";
             case 0x001D -> "GPS_DateStamp";
             default -> null;
         };
